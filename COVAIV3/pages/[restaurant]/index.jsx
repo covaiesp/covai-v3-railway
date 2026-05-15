@@ -48,8 +48,9 @@ export default function RestaurantDashboard() {
   return (
     <div>
       <Dashboard 
-        restaurantId={restaurantData.id} 
-        restaurantName={restaurantData.name} 
+        restaurantId={restaurantData.id}
+        restaurantSlug={restaurantData.slug}
+        restaurantName={restaurantData.name}
       />
       <div style={styles.footer}>
         <button onClick={handleLogout} style={styles.btnLogout}>

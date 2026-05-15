@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase-client';
+import { mockReservations, mockConversations, getSevenDaysMetrics } from '@/lib/mockData';
 
 export default function Dashboard({ restaurantId, restaurantSlug, restaurantName }) {
   const [reservations, setReservations] = useState([]);
@@ -10,6 +11,7 @@ export default function Dashboard({ restaurantId, restaurantSlug, restaurantName
   const [error, setError] = useState(null);
   const [today] = useState(new Date());
   const [hoveredRes, setHoveredRes] = useState(null);
+  const [usingMock, setUsingMock] = useState(false);
 
   useEffect(() => {
     loadAllData();
@@ -21,7 +23,9 @@ export default function Dashboard({ restaurantId, restaurantSlug, restaurantName
     setError(null);
     try {
       const todayStr = formatDate(today);
+      let useMock = false;
       
+      // Intentar cargar de Supabase
       const { data: todayRes, error: resError } = await supabase
         .from('reservations')
         .select('*')
@@ -29,7 +33,17 @@ export default function Dashboard({ restaurantId, restaurantSlug, restaurantName
         .eq('fecha', todayStr)
         .order('hora', { ascending: true });
 
-      if (resError) throw resError;
+      if (resError || !todayRes || todayRes.length === 0) {
+        // Fallback a mock data
+        setReservations(mockReservations);
+        setConversations(mockConversations);
+        setSevenDaysData(getSevenDaysMetrics());
+        calculateKPIs(mockReservations, getSevenDaysMetrics());
+        setUsingMock(true);
+        setLoading(false);
+        return;
+      }
+
       setReservations(todayRes || []);
 
       let convData = [];
@@ -71,6 +85,7 @@ export default function Dashboard({ restaurantId, restaurantSlug, restaurantName
       setSevenDaysData(sevenDays);
 
       calculateKPIs(todayRes || [], sevenDays);
+      setUsingMock(false);
     } catch (err) {
       console.error('Error loading dashboard:', err);
       setError('Error al cargar datos');
@@ -129,6 +144,7 @@ export default function Dashboard({ restaurantId, restaurantSlug, restaurantName
         <div>
           <h1 style={styles.title}>👋 Buenas tardes, {restaurantName}</h1>
           <p style={styles.date}>{today.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
+          {usingMock && <p style={styles.mockBadge}>📊 Datos de demostración</p>}
         </div>
         <div style={styles.headerActions}>
           <button style={styles.btnHeader}>📊 Resumen mensual</button>
@@ -275,7 +291,13 @@ const styles = {
   date: {
     fontSize: '13px',
     color: '#888',
+    margin: '0 0 4px 0',
+  },
+  mockBadge: {
+    fontSize: '11px',
+    color: '#22c55e',
     margin: 0,
+    fontWeight: '600',
   },
   headerActions: {
     display: 'flex',

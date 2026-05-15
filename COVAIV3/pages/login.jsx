@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useRouter } from 'next/router';
-import { supabase, loginUser, getCurrentUser } from '@/lib/supabase-client';
+import { supabase, loginUser } from '@/lib/supabase-client';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -17,23 +17,10 @@ export default function Login() {
     try {
       await loginUser(email, password);
       
-      // Get user data to determine redirect
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      const { data: userData } = await supabase
-        .from('users')
-        .select('role, restaurant_slug')
-        .eq('id', user.id)
-        .single();
-
-      if (userData?.role === 'admin') {
-        router.push('/admin');
-      } else {
-        router.push(`/${userData?.restaurant_slug || 'dashboard'}`);
-      }
+      // Simplemente ir a admin para cualquier usuario que inicie sesión
+      router.push('/admin');
     } catch (err) {
       setError(err.message || 'Error al iniciar sesión');
-    } finally {
       setLoading(false);
     }
   };

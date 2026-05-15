@@ -1,45 +1,42 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-export const supabase = supabaseUrl
-  ? createClient(supabaseUrl, supabaseAnonKey)
-  : createClient('https://placeholder.supabase.co', 'placeholder-key');
+export const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Check auth state
-export async function getSession() {
-  const { data: { session } } = await supabase.auth.getSession();
-  return session;
-}
-
-// Get current user with metadata
-export async function getCurrentUser() {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return null;
-  
-  const { data: userData } = await supabase
-    .from('users')
-    .select('*')
-    .eq('id', user.id)
+export const loginWithPin = async (pin) => {
+  const { data, error } = await supabase
+    .from('restaurants')
+    .select('id, name, slug')
+    .eq('access_code', pin)
     .single();
-  
-  return { ...user, ...userData };
-}
 
-// Login
-export async function loginUser(email, password) {
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
-  
-  if (error) throw error;
+  if (error) throw new Error('PIN inválido');
   return data;
-}
+};
 
-// Logout
-export async function logoutUser() {
-  const { error } = await supabase.auth.signOut();
+export const getReservations = async (restaurantId, date) => {
+  const { data, error } = await supabase
+    .from('reservations')
+    .select('*')
+    .eq('restaurant_id', restaurantId)
+    .eq('reservation_date', date)
+    .order('reservation_time', { ascending: true });
+
   if (error) throw error;
-}
+  return data || [];
+};
+
+export const getConversations = async (restaurantId) => {
+  const { data, error } = await supabase
+    .from('conversations')
+    .select('*')
+    .eq('restaurant_id', restaurantId)
+    .order('created_at', { ascending: false })
+    .limit(50);
+
+  if (error) throw error;
+  return data || [];
+};
+

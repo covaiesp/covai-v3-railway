@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>COVAI — Panel de gestión</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#f5f5f0;
+  --white:#ffffff;
+  --border:#e8e8e3;
+  --text:#111;
+  --muted:#777;
+  --light:#f0f0eb;
+  --green:#22c55e;
+  --green-bg:#f0fdf4;
+  --green-text:#15803d;
+  --orange:#f97316;
+  --orange-bg:#fff7ed;
+  --orange-text:#c2410c;
+  --blue:#3b82f6;
+  --blue-bg:#eff6ff;
+  --purple-bg:#f5f3ff;
+  --red-bg:#fef2f2;
+  --radius:12px;
+  --radius-sm:8px;
+}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;}
+
+/* HEADER */
+header{background:var(--white);border-bottom:1px solid var(--border);padding:0 32px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+.logo{font-size:22px;font-weight:700;color:#111;letter-spacing:-0.5px;}
+.hdr-right{display:flex;align-items:center;gap:16px;}
+.hdr-btn{display:flex;align-items:center;gap:6px;border:1px solid var(--border);background:var(--white);padding:8px 14px;border-radius:var(--radius-sm);font-size:13px;color:#444;cursor:pointer;font-family:'Inter',sans-serif;transition:background 0.15s;}
+.hdr-btn:hover{background:var(--light);}
+.hdr-btn svg{color:#666;}
+.notif-btn{position:relative;width:36px;height:36px;border:1px solid var(--border);border-radius:50%;background:var(--white);display:flex;align-items:center;justify-content:center;cursor:pointer;}
+.notif-badge{position:absolute;top:-4px;right:-4px;width:18px;height:18px;background:#ef4444;border-radius:50%;font-size:10px;font-weight:700;color:#fff;display:flex;align-items:center;justify-content:center;border:2px solid var(--white);}
+
+/* PAGE */
+.page{padding:28px 32px;max-width:1400px;margin:0 auto;}
+.page-greeting{margin-bottom:24px;}
+.page-title{font-size:26px;font-weight:700;color:#111;display:flex;align-items:center;gap:10px;margin-bottom:4px;}
+.page-date{font-size:14px;color:var(--muted);}
+.date-line{width:200px;height:2px;background:var(--green);border-radius:2px;margin-top:6px;}
+
+/* CARRUSEL */
+.carousel-wrap{position:relative;margin-bottom:28px;}
+.carousel-inner{display:grid;grid-template-columns:repeat(5,1fr);gap:16px;}
+.carousel-arrow{position:absolute;top:50%;transform:translateY(-50%);width:32px;height:32px;border-radius:50%;background:var(--white);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:10;font-size:14px;color:#555;transition:background 0.15s;}
+.carousel-arrow:hover{background:var(--light);}
+.carousel-arrow.left{left:-16px;}
+.carousel-arrow.right{right:-16px;}
+.day-card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;cursor:pointer;transition:all 0.2s;position:relative;}
+.day-card.active{border-color:#111;box-shadow:0 2px 12px rgba(0,0,0,0.08);}
+.day-card:hover:not(.active){border-color:#ccc;}
+.day-card-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;}
+.day-label{font-size:13px;font-weight:600;color:#111;}
+.day-sublabel{font-size:11px;color:var(--muted);margin-top:1px;}
+.day-icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;}
+.day-count{display:flex;align-items:baseline;gap:6px;margin-bottom:10px;}
+.day-num{font-size:28px;font-weight:700;color:#111;line-height:1;}
+.day-word{font-size:13px;color:var(--muted);font-weight:400;}
+.day-tags{display:flex;gap:8px;flex-wrap:wrap;}
+.tag-confirmed{background:var(--green-bg);color:var(--green-text);font-size:11px;font-weight:500;padding:3px 8px;border-radius:20px;}
+.tag-pending{background:var(--orange-bg);color:var(--orange-text);font-size:11px;font-weight:500;padding:3px 8px;border-radius:20px;}
+
+/* RESUMEN MENSUAL */
+.monthly-section{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:20px 24px;margin-bottom:28px;}
+.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;}
+.section-title{font-size:16px;font-weight:600;color:#111;}
+.month-select{display:flex;align-items:center;gap:6px;border:1px solid var(--border);padding:6px 12px;border-radius:var(--radius-sm);font-size:12px;color:#555;cursor:pointer;background:var(--white);font-family:'Inter',sans-serif;}
+.monthly-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
+.metric-card{display:flex;align-items:flex-start;gap:14px;padding:16px;background:var(--bg);border-radius:var(--radius-sm);}
+.metric-ico{width:40px;height:40px;min-width:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;}
+.metric-ico.red{background:#fef2f2;}
+.metric-ico.green{background:var(--green-bg);}
+.metric-ico.orange{background:var(--orange-bg);}
+.metric-label{font-size:12px;color:var(--muted);margin-bottom:4px;}
+.metric-num{font-size:26px;font-weight:700;color:#111;line-height:1.1;}
+.metric-unit{font-size:13px;color:var(--muted);font-weight:400;}
+.metric-sub{font-size:11px;color:var(--muted);margin-top:3px;}
+.metric-sub .down{color:var(--green-text);}
+.monthly-footer{text-align:right;margin-top:14px;}
+.monthly-footer a{font-size:13px;color:#555;text-decoration:none;display:inline-flex;align-items:center;gap:5px;}
+.monthly-footer a:hover{color:#111;}
+
+/* BOTTOM GRID */
+.bottom-grid{display:grid;grid-template-columns:1fr 320px 300px;gap:16px;align-items:start;}
+
+/* RESERVAS */
+.reservas-section{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;}
+.reservas-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);}
+.reservas-title{display:flex;align-items:center;gap:10px;font-size:15px;font-weight:600;}
+.live-dot{width:8px;height:8px;border-radius:50%;background:var(--green);display:inline-block;animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+.live-label{font-size:11px;color:var(--green-text);font-weight:500;}
+.reservas-actions{display:flex;align-items:center;gap:8px;}
+.btn-sm{border:1px solid var(--border);background:var(--white);padding:7px 12px;border-radius:var(--radius-sm);font-size:12px;color:#444;cursor:pointer;font-family:'Inter',sans-serif;transition:background 0.15s;}
+.btn-sm:hover{background:var(--light);}
+.btn-icon{width:32px;height:32px;border:1px solid var(--border);background:var(--white);border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background 0.15s;}
+.btn-icon:hover{background:var(--light);}
+.table-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;}
+th{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;padding:10px 20px;text-align:left;border-bottom:1px solid var(--border);background:var(--bg);}
+td{padding:14px 20px;border-bottom:1px solid var(--border);vertical-align:middle;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:#fafaf8;}
+.client-name{font-size:13px;font-weight:600;color:#111;margin-bottom:2px;}
+.client-phone{font-size:11px;color:var(--muted);}
+.mesa-cell{display:flex;align-items:center;gap:6px;font-size:13px;color:#444;}
+.mesa-icon{font-size:12px;color:var(--muted);}
+.personas-cell{display:flex;align-items:center;gap:5px;font-size:13px;color:#444;}
+.status-dot{width:7px;height:7px;border-radius:50%;display:inline-block;}
+.status-confirmed{background:var(--green);}
+.status-pending{background:var(--orange);}
+.status-label-confirmed{color:var(--green-text);font-size:12px;font-weight:500;}
+.status-label-pending{color:var(--orange-text);font-size:12px;font-weight:500;}
+.row-menu{width:20px;height:20px;cursor:pointer;color:var(--muted);display:flex;align-items:center;justify-content:center;border-radius:4px;}
+.row-menu:hover{background:var(--light);}
+.table-footer{padding:14px 20px;border-top:1px solid var(--border);background:var(--bg);}
+.table-footer a{font-size:13px;color:#555;text-decoration:none;display:inline-flex;align-items:center;gap:5px;}
+.table-footer a:hover{color:#111;}
+
+/* CONVERSACIONES */
+.conv-section{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;}
+.conv-header{padding:14px 16px;border-bottom:1px solid var(--border);}
+.conv-title-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.conv-title{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;}
+.online-dot{width:8px;height:8px;background:var(--green);border-radius:50%;}
+.online-label{font-size:11px;color:var(--green-text);font-weight:500;}
+.conv-actions{display:flex;gap:6px;}
+.conv-tabs{display:flex;gap:0;font-size:11px;}
+.conv-tab{padding:5px 10px;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;transition:all 0.15s;white-space:nowrap;}
+.conv-tab.active{color:#111;border-bottom-color:#111;font-weight:600;}
+.conv-tab .badge{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;font-size:9px;font-weight:700;margin-left:4px;}
+.conv-tab.active .badge{background:#111;color:#fff;}
+.conv-tab:not(.active) .badge{background:var(--light);color:#666;}
+.conv-list{overflow-y:auto;max-height:320px;}
+.conv-item{display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer;border-bottom:1px solid var(--border);transition:background 0.15s;position:relative;}
+.conv-item:hover{background:#fafaf8;}
+.conv-item.active{background:var(--bg);}
+.conv-item:last-child{border-bottom:none;}
+.conv-avatar{width:36px;height:36px;min-width:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;}
+.av-vr{background:#6366f1;}
+.av-ls{background:#8b5cf6;}
+.av-mp{background:#0ea5e9;}
+.av-jm{background:#f59e0b;}
+.av-tg{background:#10b981;}
+.conv-info{flex:1;min-width:0;}
+.conv-name{font-size:12px;font-weight:600;color:#111;margin-bottom:2px;}
+.conv-last{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px;}
+.conv-meta{display:flex;flex-direction:column;align-items:flex-end;gap:4px;}
+.conv-time{font-size:10px;color:var(--muted);}
+.unread-badge{width:18px;height:18px;border-radius:50%;background:var(--green);font-size:10px;font-weight:700;color:#fff;display:flex;align-items:center;justify-content:center;}
+.conv-footer{padding:12px 14px;border-top:1px solid var(--border);background:var(--bg);}
+.conv-footer a{font-size:12px;color:#555;text-decoration:none;display:inline-flex;align-items:center;gap:5px;}
+
+/* CHAT */
+.chat-section{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);display:flex;flex-direction:column;height:500px;}
+.chat-msgs{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px;background:#f9fafb;}
+.msg-bubble{max-width:85%;padding:9px 12px;font-size:12px;line-height:1.5;border-radius:12px;}
+.msg-in{background:var(--white);border:1px solid var(--border);align-self:flex-start;border-bottom-left-radius:3px;color:#111;}
+.msg-out{background:#25a352;color:#fff;align-self:flex-end;border-bottom-right-radius:3px;}
+.msg-time{font-size:9px;margin-top:3px;text-align:right;}
+.msg-in .msg-time{color:var(--muted);}
+.msg-out .msg-time{color:rgba(255,255,255,0.65);}
+.msg-check{display:inline;}
+.chat-input-row{display:flex;align-items:center;gap:8px;padding:10px 14px;border-top:1px solid var(--border);}
+.chat-emoji{font-size:18px;cursor:pointer;color:var(--muted);}
+.chat-input{flex:1;border:none;outline:none;font-family:'Inter',sans-serif;font-size:13px;color:#111;background:transparent;placeholder-color:#aaa;}
+.chat-send{width:32px;height:32px;background:var(--green);border:none;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.15s;}
+.chat-send:hover{background:#16a34a;}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">COVAI</div>
+  <div class="hdr-right">
+    <button class="hdr-btn" onclick="toggleMonthly()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      Resumen mensual
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+    </button>
+    <div class="notif-btn">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      <div class="notif-badge">3</div>
+    </div>
+  </div>
+</header>
+
+<div class="page">
+
+  <!-- GREETING -->
+  <div class="page-greeting">
+    <div class="page-title">Buenas tardes, Restaurante Brasa 🔥</div>
+    <div class="page-date" id="today-date">Martes, 12 de mayo</div>
+    <div class="date-line"></div>
+  </div>
+
+  <!-- CARRUSEL -->
+  <div class="carousel-wrap">
+    <button class="carousel-arrow left" onclick="scrollCarousel(-1)">&#8249;</button>
+    <div class="carousel-inner" id="carousel"></div>
+    <button class="carousel-arrow right" onclick="scrollCarousel(1)">&#8250;</button>
+  </div>
+
+  <!-- RESUMEN MENSUAL -->
+  <div class="monthly-section" id="monthly-section">
+    <div class="section-header">
+      <div class="section-title">Resumen mensual</div>
+      <button class="month-select">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        Mayo 2026
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+    </div>
+    <div class="monthly-grid">
+      <div class="metric-card">
+        <div class="metric-ico red">📉</div>
+        <div>
+          <div class="metric-label">Tasa de cancelación</div>
+          <div><span class="metric-num">6,2</span><span class="metric-unit">%</span></div>
+          <div class="metric-sub"><span class="down">↓ 1,3% vs abril</span></div>
+          <div class="metric-sub" style="margin-top:1px;">De las reservas confirmadas</div>
+        </div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-ico green">📅</div>
+        <div>
+          <div class="metric-label">Día con más reservas</div>
+          <div><span class="metric-num">48</span><span class="metric-unit"> reservas</span></div>
+          <div class="metric-sub">Sábado, 10 de mayo</div>
+        </div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-ico orange">🕐</div>
+        <div>
+          <div class="metric-label">Reservas fuera del horario del restaurante</div>
+          <div><span class="metric-num">7</span><span class="metric-unit"> reservas</span></div>
+          <div class="metric-sub">Este mes</div>
+        </div>
+      </div>
+    </div>
+    <div class="monthly-footer">
+      <a href="#">Ver resumen completo →</a>
+    </div>
+  </div>
+
+  <!-- BOTTOM GRID -->
+  <div class="bottom-grid">
+
+    <!-- RESERVAS -->
+    <div class="reservas-section">
+      <div class="reservas-header">
+        <div class="reservas-title">
+          Reservas de hoy
+          <span class="live-dot"></span>
+          <span class="live-label">En tiempo real</span>
+        </div>
+        <div class="reservas-actions">
+          <button class="btn-sm">Ver calendario</button>
+          <div class="btn-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="14" y2="12"/><line x1="4" y1="18" x2="10" y2="18"/></svg>
+          </div>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Hora</th>
+              <th>Cliente</th>
+              <th>Mesa</th>
+              <th>Personas</th>
+              <th>Estado</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="reservas-tbody"></tbody>
+        </table>
+      </div>
+      <div class="table-footer">
+        <a href="#">Ver todas las reservas de hoy →</a>
+      </div>
+    </div>
+
+    <!-- CONVERSACIONES -->
+    <div class="conv-section">
+      <div class="conv-header">
+        <div class="conv-title-row">
+          <div class="conv-title">
+            Conversaciones
+            <span class="online-dot"></span>
+            <span class="online-label">En línea</span>
+          </div>
+          <div class="conv-actions">
+            <div class="btn-icon">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            </div>
+            <div class="btn-icon">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="14" y2="12"/><line x1="4" y1="18" x2="10" y2="18"/></svg>
+            </div>
+          </div>
+        </div>
+        <div class="conv-tabs">
+          <div class="conv-tab active" onclick="setTab(this,'all')">Todas <span class="badge">8</span></div>
+          <div class="conv-tab" onclick="setTab(this,'unread')">No leídos <span class="badge">3</span></div>
+          <div class="conv-tab" onclick="setTab(this,'active')">En curso <span class="badge">4</span></div>
+          <div class="conv-tab" onclick="setTab(this,'resolved')">Resueltas <span class="badge">1</span></div>
+        </div>
+      </div>
+      <div class="conv-list" id="conv-list"></div>
+      <div class="conv-footer">
+        <a href="#">Ver todas las conversaciones →</a>
+      </div>
+    </div>
+
+    <!-- CHAT -->
+    <div class="chat-section">
+      <div class="chat-msgs" id="chat-msgs"></div>
+      <div class="chat-input-row">
+        <span class="chat-emoji">😊</span>
+        <input class="chat-input" placeholder="Escribe un mensaje..." id="chat-input" onkeydown="sendMsg(event)">
+        <button class="chat-send" onclick="sendMsg({key:'Enter',type:'click'})">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const today = new Date();
+const dias = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+const meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+document.getElementById('today-date').textContent = `${dias[today.getDay()]}, ${today.getDate()} de ${meses[today.getMonth()]}`;
+
+const iconColors = ['#6366f1','#8b5cf6','#0ea5e9','#f59e0b','#10b981','#ec4899','#14b8a6'];
+const dayIcons = ['📅','📆','🗓️','📋','📌'];
+const iconBgs = ['#eff6ff','#f5f3ff','#fff7ed','#f0fdf4','#fdf4ff'];
+
+const carouselData = [
+  {label:'Hoy', sub: `${dias[today.getDay()]}, ${today.getDate()} mayo`, total:24, confirmed:19, pending:5},
+  {label:'Mañana', sub: `${dias[(today.getDay()+1)%7]}, ${today.getDate()+1} mayo`, total:18, confirmed:14, pending:4},
+  {label:`${dias[(today.getDay()+2)%7]}, ${today.getDate()+2} mayo`, sub:`${today.getDate()+2} de mayo`, total:16, confirmed:12, pending:4},
+  {label:`${dias[(today.getDay()+3)%7]}, ${today.getDate()+3} mayo`, sub:`${today.getDate()+3} de mayo`, total:22, confirmed:17, pending:5},
+  {label:`${dias[(today.getDay()+4)%7]}, ${today.getDate()+4} mayo`, sub:`${today.getDate()+4} de mayo`, total:28, confirmed:22, pending:6},
+];
+
+const carousel = document.getElementById('carousel');
+carouselData.forEach((d,i) => {
+  const bg = iconBgs[i % iconBgs.length];
+  const ico = dayIcons[i];
+  carousel.innerHTML += `
+    <div class="day-card ${i===0?'active':''}" onclick="selectDay(this,${i})">
+      <div class="day-card-header">
+        <div>
+          <div class="day-label">${d.label}</div>
+          <div class="day-sublabel">${d.sub}</div>
+        </div>
+        <div class="day-icon" style="background:${bg}">${ico}</div>
+      </div>
+      <div class="day-count">
+        <span class="day-num">${d.total}</span>
+        <span class="day-word">reservas</span>
+      </div>
+      <div class="day-tags">
+        <span class="tag-confirmed">${d.confirmed} confirmadas</span>
+        <span class="tag-pending">${d.pending} por confirmar</span>
+      </div>
+    </div>`;
+});
+
+function selectDay(el, i) {
+  document.querySelectorAll('.day-card').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function scrollCarousel(dir) {}
+
+function toggleMonthly() {
+  const s = document.getElementById('monthly-section');
+  s.style.display = s.style.display === 'none' ? 'block' : 'none';
+}
+
+const reservas = [
+  {hora:'20:00', nombre:'Valentina Rossi', tel:'+54 9 11 5522 8844', mesa:'Terraza 3', personas:2, estado:'confirmed'},
+  {hora:'20:30', nombre:'Lucía S.', tel:'+54 9 11 6677 4455', mesa:'Salón 5', personas:2, estado:'confirmed'},
+  {hora:'21:00', nombre:'Martín Pérez', tel:'+54 9 11 7788 9900', mesa:'Terraza 1', personas:4, estado:'confirmed'},
+  {hora:'21:30', nombre:'Julia M.', tel:'+54 9 11 3344 5566', mesa:'Salón 2', personas:2, estado:'pending'},
+  {hora:'22:00', nombre:'Tomás G.', tel:'+54 9 11 3933 1279', mesa:'Terraza 2', personas:3, estado:'confirmed'},
+];
+
+const tbody = document.getElementById('reservas-tbody');
+reservas.forEach(r => {
+  const isConf = r.estado === 'confirmed';
+  tbody.innerHTML += `
+    <tr>
+      <td style="font-weight:600;font-size:14px;">${r.hora}</td>
+      <td>
+        <div class="client-name">${r.nombre}</div>
+        <div class="client-phone">${r.tel}</div>
+      </td>
+      <td>
+        <div class="mesa-cell">
+          <span class="mesa-icon">📋</span>
+          ${r.mesa}
+        </div>
+      </td>
+      <td>
+        <div class="personas-cell">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+          ${r.personas}
+        </div>
+      </td>
+      <td>
+        <span class="status-dot ${isConf?'status-confirmed':'status-pending'}"></span>
+        <span style="margin-left:6px;" class="${isConf?'status-label-confirmed':'status-label-pending'}">${isConf?'Confirmada':'Por confirmar'}</span>
+      </td>
+      <td>
+        <div class="row-menu">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+        </div>
+      </td>
+    </tr>`;
+});
+
+// ── CONFIGURACIÓN COVAI V3 ────────────────────────────────────
+// Supabase Project: ptmfgyflyjkqjkzwrlnx
+// Edge Function: covai-processor
+// Restaurant: Covai (+34 635 61 34 22)
+
+const SUPABASE_URL = 'https://ptmfgyflyjkqjkzwrlnx.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB0bWZneWZseWprcWprejd3cmxueCIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzE0NDI5NzY1LCJleHAiOjE3Mjk5ODE3NjV9.pZn9r6mNCSFHsq6c-pVZfKsNDXMKvCZg6hPmF_q5QWo';
+const RESTAURANT_ID = '6238b3ad-f933-4104-a81f-159600f27bd4'; // Covai
+const PHONE_RESTAURANT = '34635613422';
+
+// WEBHOOK PARA ENVIAR MENSAJES DESDE DASHBOARD
+// Reemplazar con webhook real tras crear en Make
+const MAKE_WEBHOOK_SEND = 'https://hook.eu1.make.com/covai_v3_dashboard_send_prod';
+
+// WEBHOOK PARA LEER MENSAJES (Supabase REST API)
+const MAKE_WEBHOOK_MSGS = 'https://ptmfgyflyjkqjkzwrlnx.supabase.co/rest/v1/messages';
+const MAKE_WEBHOOK_URL = MAKE_WEBHOOK_SEND;
+// ───────────────────────────────────────────────────────────────
+
+const AV_COLORS = ['#6366f1','#8b5cf6','#0ea5e9','#f59e0b','#10b981','#ec4899','#14b8a6','#f43f5e'];
+let allMessages = [];       // todos los mensajes de la sheet
+let conversations = [];     // agrupados por teléfono
+let activeConv = null;
+
+function getInitials(name) {
+  if (!name) return '?';
+  return name.split(' ').slice(0,2).map(n=>n[0]||'').join('').toUpperCase() || '?';
+}
+
+function formatMsgTime(ts) {
+  if (!ts) return '';
+  // formato sheet: "10/05/2026 11:08:29"
+  try {
+    const parts = ts.split(' ');
+    if (parts.length === 2) {
+      const [d,m,y] = parts[0].split('/');
+      const t = parts[1].slice(0,5);
+      return t;
+    }
+    return ts.slice(0,5);
+  } catch(e) { return ''; }
+}
+
+function buildConversations(msgs) {
+  const byPhone = {};
+  msgs.forEach(m => {
+    const phone = m.telefono || m[1] || '';
+    if (!phone) return;
+    if (!byPhone[phone]) byPhone[phone] = { phone, msgs:[] };
+    byPhone[phone].msgs.push(m);
+  });
+  // ordenar mensajes por timestamp dentro de cada conv
+  return Object.values(byPhone).map((c, idx) => {
+    c.msgs.sort((a,b) => (a.timestamp||a[0]||'').localeCompare(b.timestamp||b[0]||''));
+    const last = c.msgs[c.msgs.length-1];
+    const lastText = last ? (last.texto || last[3] || '') : '';
+    const lastTime = last ? formatMsgTime(last.timestamp || last[0] || '') : '';
+    // buscar nombre en reservas si existe
+    const resRow = reservas.find(r => String(r.tel).replace(/\D/g,'')).endsWith(String(c.phone).slice(-8));
+    const nombre = resRow ? resRow.nombre : '';
+    return {
+      phone: c.phone,
+      name: nombre || c.phone,
+      initials: getInitials(nombre || String(c.phone).slice(-4)),
+      color: AV_COLORS[idx % AV_COLORS.length],
+      lastText,
+      lastTime,
+      msgs: c.msgs,
+      unread: c.msgs.filter(m => (m.direccion||m[2]||'') === 'entrante').length > 0 ? 1 : 0
+    };
+  }).sort((a,b) => b.lastTime.localeCompare(a.lastTime));
+}
+
+function renderConvList() {
+  const convList = document.getElementById('conv-list');
+  if (conversations.length === 0) {
+    convList.innerHTML = '<div style="padding:20px;text-align:center;font-size:12px;color:#aaa;">Sin conversaciones aún</div>';
+    return;
+  }
+  convList.innerHTML = '';
+  conversations.forEach((c, idx) => {
+    const isActive = activeConv && activeConv.phone === c.phone;
+    convList.innerHTML += `
+      <div class="conv-item ${isActive?'active':''}" onclick="selectConv(${idx})">
+        <div class="conv-avatar" style="background:${c.color}">${c.initials}</div>
+        <div class="conv-info">
+          <div class="conv-name">${c.name}</div>
+          <div class="conv-last">${(c.lastText||'').slice(0,38)}${(c.lastText||'').length>38?'…':''}</div>
+        </div>
+        <div class="conv-meta">
+          <div class="conv-time">${c.lastTime}</div>
+          ${c.unread > 0 ? `<div class="unread-badge">${c.unread}</div>` : ''}
+        </div>
+      </div>`;
+  });
+}
+
+function renderChat() {
+  const chatEl = document.getElementById('chat-msgs');
+  if (!activeConv) {
+    chatEl.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:13px;color:#aaa;">Selecciona una conversación</div>';
+    return;
+  }
+  chatEl.innerHTML = '';
+  activeConv.msgs.forEach(m => {
+    const dir = m.direccion || m[2] || 'entrante';
+    const texto = m.texto || m[3] || '';
+    const ts = formatMsgTime(m.timestamp || m[0] || '');
+    const isOut = dir === 'saliente';
+    chatEl.innerHTML += `
+      <div class="msg-bubble ${isOut?'msg-out':'msg-in'}">
+        ${texto.replace(/\n/g,'<br>')}
+        <div class="msg-time">${ts}${isOut?' ✓✓':''}</div>
+      </div>`;
+  });
+  chatEl.scrollTop = chatEl.scrollHeight;
+}
+
+function selectConv(idx) {
+  document.querySelectorAll('.conv-item').forEach(i => i.classList.remove('active'));
+  document.querySelectorAll('.conv-item')[idx]?.classList.add('active');
+  activeConv = conversations[idx];
+  const badge = document.querySelectorAll('.conv-item')[idx]?.querySelector('.unread-badge');
+  if (badge) badge.remove();
+  renderChat();
+}
+
+function setTab(el, tab) {
+  document.querySelectorAll('.conv-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+}
+
+// Carga inicial de mensajes desde Make → Sheet Mensajes
+async function loadMessages() {
+  const convList = document.getElementById('conv-list');
+  convList.innerHTML = '<div style="padding:20px;text-align:center;font-size:12px;color:#aaa;">Cargando mensajes...</div>';
+  try {
+    const res = await fetch(MAKE_WEBHOOK_MSGS, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'get_messages' })
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    // data puede ser array de objetos {timestamp, telefono, direccion, texto}
+    // o array de arrays si Make devuelve filas crudas
+    allMessages = Array.isArray(data) ? data : [];
+    conversations = buildConversations(allMessages);
+    if (conversations.length > 0) {
+      activeConv = conversations[0];
+    }
+    renderConvList();
+    renderChat();
+    // Actualizar tabs con conteos reales
+    document.querySelector('.conv-tab.active .badge').textContent = conversations.length;
+  } catch(err) {
+    console.error('Error cargando mensajes:', err);
+    convList.innerHTML = '<div style="padding:20px;text-align:center;font-size:12px;color:#e53e3e;">Error al cargar mensajes.<br>Verifica el escenario de Make.</div>';
+  }
+}
+
+// Polling cada 15 segundos para mensajes nuevos
+loadMessages();
+setInterval(loadMessages, 15000);
+
+const chatEl = document.getElementById('chat-msgs');
+renderChat();
+
+function nowTime() {
+  const n = new Date();
+  return `${n.getHours()}:${String(n.getMinutes()).padStart(2,'0')}`;
+}
+
+function appendMsg(text, state) {
+  const chatEl = document.getElementById('chat-msgs');
+  const id = 'msg-' + Date.now();
+  const icons = {sending:'⏳', sent:'✓✓', error:'⚠️'};
+  chatEl.innerHTML += `
+    <div class="msg-bubble msg-out" id="${id}">
+      ${text.replace(/\n/g,'<br>')}
+      <div class="msg-time" id="${id}-time">${nowTime()} <span id="${id}-status">${icons[state]}</span></div>
+    </div>`;
+  chatEl.scrollTop = chatEl.scrollHeight;
+  return id;
+}
+
+function updateMsgStatus(id, state) {
+  const el = document.getElementById(`${id}-status`);
+  if (!el) return;
+  const icons = {sending:'⏳', sent:'✓✓', error:'⚠️'};
+  el.textContent = icons[state];
+  if (state === 'error') el.style.color = '#fca5a5';
+}
+
+async function sendMsg(e) {
+  if (e.key !== 'Enter' && e.type !== 'click') return;
+  const input = document.getElementById('chat-input');
+  const text = input.value.trim();
+  if (!text) return;
+
+  // 1. Mostrar el mensaje inmediatamente con estado "enviando"
+  const msgId = appendMsg(text, 'sending');
+  input.value = '';
+  input.disabled = true;
+  document.querySelector('.chat-send').disabled = true;
+
+  try {
+    const res = await fetch(MAKE_WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        to: activeConv.phone,          // número del cliente activo, sin +
+        nombre: activeConv.name,       // nombre para contexto en Make
+        mensaje: text,                 // texto del mensaje
+        origen: 'dashboard_covai',     // identificador de origen
+        timestamp: new Date().toISOString()
+      })
+    });
+
+    if (res.ok) {
+      updateMsgStatus(msgId, 'sent');
+    } else {
+      updateMsgStatus(msgId, 'error');
+      console.error('Make webhook error:', res.status, await res.text());
+    }
+  } catch (err) {
+    updateMsgStatus(msgId, 'error');
+    console.error('Fetch error:', err);
+  } finally {
+    input.disabled = false;
+    document.querySelector('.chat-send').disabled = false;
+    input.focus();
+  }
+}
+</script>
+</body>
+</html>

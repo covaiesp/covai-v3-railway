@@ -39,7 +39,7 @@ export default function Dashboard({ restaurantId, restaurantSlug, restaurantName
           .select('*')
           .eq('restaurant_id', restaurantId)
           .order('created_at', { ascending: false })
-          .limit(20);
+          .limit(15);
         
         if (!convError) {
           convData = convRes || [];
@@ -63,7 +63,7 @@ export default function Dashboard({ restaurantId, restaurantSlug, restaurantName
 
         sevenDays.push({
           date: dateStr,
-          day: ['D', 'L', 'M', 'X', 'J', 'V', 'S'][d.getDay()],
+          day: ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'][d.getDay()],
           count: count || 0,
           dayNum: d.getDate(),
         });
@@ -73,7 +73,7 @@ export default function Dashboard({ restaurantId, restaurantSlug, restaurantName
       calculateKPIs(todayRes || [], sevenDays);
     } catch (err) {
       console.error('Error loading dashboard:', err);
-      setError('Error al cargar datos. Intenta recargar.');
+      setError('Error al cargar datos');
     } finally {
       setLoading(false);
     }
@@ -105,134 +105,113 @@ export default function Dashboard({ restaurantId, restaurantSlug, restaurantName
 
   const formatDate = (d) => d.toISOString().split('T')[0];
 
-  const getStatusColor = (status) => {
-    const statusLower = status?.toLowerCase().trim() || '';
-    if (statusLower === 'confirmada') return { bg: '#f0fdf4', text: '#16a34a', label: 'Confirmada' };
-    if (statusLower === 'cancelada') return { bg: '#fef2f2', text: '#dc2626', label: 'Cancelada' };
-    if (statusLower === 'pendiente') return { bg: '#fef3c7', text: '#ca8a04', label: 'Pendiente' };
-    return { bg: '#f3f4f6', text: '#6b7280', label: status || 'Sin estado' };
+  const getStatusStyle = (status) => {
+    const s = status?.toLowerCase().trim() || '';
+    if (s === 'confirmada') return { bg: '#f0fdf4', color: '#16a34a', label: '✓ Confirmada' };
+    if (s === 'cancelada') return { bg: '#fef2f2', color: '#dc2626', label: '✗ Cancelada' };
+    if (s === 'pendiente') return { bg: '#fef3c7', color: '#ca8a04', label: '⏱ Pendiente' };
+    return { bg: '#f3f4f6', color: '#6b7280', label: status };
   };
 
-  if (loading) {
-    return <div style={styles.loading}>Cargando panel...</div>;
-  }
+  if (loading) return <div style={styles.loader}>Cargando panel...</div>;
 
-  if (error) {
-    return (
-      <div style={styles.errorContainer}>
-        <p style={styles.errorText}>{error}</p>
-        <button 
-          onClick={() => {
-            setLoading(true);
-            loadAllData();
-          }}
-          style={styles.retryBtn}
-        >
-          Reintentar
-        </button>
-      </div>
-    );
-  }
+  if (error) return (
+    <div style={styles.errorBox}>
+      <p>{error}</p>
+      <button onClick={() => { setLoading(true); loadAllData(); }} style={styles.retryBtn}>Reintentar</button>
+    </div>
+  );
 
   return (
-    <div style={styles.container}>
+    <div style={styles.root}>
       {/* HEADER */}
       <header style={styles.header}>
-        <div style={styles.headerLeft}>
-          <h1 style={styles.logo}>⭐ COVAI</h1>
-          <div style={styles.headerMeta}>
-            <h2 style={styles.restaurantName}>{restaurantName}</h2>
-            <p style={styles.headerDate}>
-              {today.toLocaleDateString('es-ES', { weekday: 'short', month: 'short', day: 'numeric' })}
-            </p>
-          </div>
+        <div>
+          <h1 style={styles.title}>👋 Buenas tardes, {restaurantName}</h1>
+          <p style={styles.date}>{today.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
         </div>
-        <div style={styles.headerRight}>
-          <button style={styles.btnSummary}>📊</button>
-          <button style={styles.btnNotif}>🔔</button>
+        <div style={styles.headerActions}>
+          <button style={styles.btnHeader}>📊 Resumen mensual</button>
+          <button style={styles.btnHeader}>🔔</button>
         </div>
       </header>
 
-      {/* CARRUSEL */}
-      <section style={styles.carouselSection}>
-        <div style={styles.carousel}>
-          {sevenDaysData.map((dayData, idx) => (
-            <div
-              key={idx}
-              style={{
-                ...styles.carouselCard,
-                ...(idx === sevenDaysData.length - 1 && styles.carouselCardActive),
-              }}
-            >
-              <p style={styles.carouselDay}>{dayData.day}</p>
-              <p style={styles.carouselNum}>{dayData.dayNum}</p>
-              <p style={styles.carouselCount}>{dayData.count}</p>
-            </div>
-          ))}
-        </div>
-      </section>
+      {/* CARRUSEL 7 DÍAS */}
+      <div style={styles.carousel}>
+        {sevenDaysData.map((d, i) => (
+          <div key={i} style={{
+            ...styles.carouselItem,
+            ...(i === 6 && styles.carouselItemActive)
+          }}>
+            <p style={styles.carouselDay}>{d.day}</p>
+            <p style={styles.carouselNum}>{d.dayNum}</p>
+            <p style={styles.carouselCount}>{d.count}</p>
+          </div>
+        ))}
+      </div>
 
       {/* KPIs */}
-      <section style={styles.kpisSection}>
-        <div style={styles.kpiCard}>
+      <div style={styles.kpis}>
+        <div style={styles.kpi}>
           <p style={styles.kpiIcon}>📅</p>
-          <p style={styles.kpiValue}>{kpis.today}</p>
-          <p style={styles.kpiLabel}>Hoy</p>
+          <p style={styles.kpiNum}>{kpis.today}</p>
+          <p style={styles.kpiLabel}>Reservas hoy</p>
         </div>
-        <div style={styles.kpiCard}>
-          <p style={styles.kpiIcon}>📆</p>
-          <p style={styles.kpiValue}>{kpis.week}</p>
-          <p style={styles.kpiLabel}>Semana</p>
+        <div style={styles.kpi}>
+          <p style={styles.kpiIcon}>👥</p>
+          <p style={styles.kpiNum}>{kpis.week}</p>
+          <p style={styles.kpiLabel}>Reservas esta semana</p>
         </div>
-        <div style={styles.kpiCard}>
+        <div style={styles.kpi}>
           <p style={styles.kpiIcon}>📊</p>
-          <p style={styles.kpiValue}>{kpis.month}</p>
-          <p style={styles.kpiLabel}>Mes</p>
+          <p style={styles.kpiNum}>{kpis.month}</p>
+          <p style={styles.kpiLabel}>Reservas este mes</p>
         </div>
-        <div style={styles.kpiCard}>
+        <div style={styles.kpi}>
           <p style={styles.kpiIcon}>🌙</p>
-          <p style={styles.kpiValue}>{kpis.offHours}</p>
-          <p style={styles.kpiLabel}>Fuera horario</p>
+          <p style={styles.kpiNum}>{kpis.offHours}</p>
+          <p style={styles.kpiLabel}>Fuera de horario</p>
         </div>
-      </section>
+      </div>
 
-      {/* MAIN CONTENT */}
-      <div style={styles.mainGrid}>
+      {/* MAIN: Reservas + Chat */}
+      <div style={styles.main}>
         {/* RESERVAS */}
-        <section style={styles.reservationsPanel}>
-          <h3 style={styles.panelTitle}>Reservas Hoy</h3>
-          <div style={styles.reservationsList}>
+        <section style={styles.reservas}>
+          <h2 style={styles.sectionTitle}>Reservas de hoy</h2>
+          <div style={styles.reservasList}>
             {reservations.length === 0 ? (
-              <p style={styles.emptyState}>Sin reservas para hoy</p>
+              <p style={styles.empty}>Sin reservas</p>
             ) : (
-              reservations.map((res) => {
-                const statusInfo = getStatusColor(res.status);
+              reservations.map(r => {
+                const st = getStatusStyle(r.status);
                 return (
                   <div 
-                    key={res.id} 
+                    key={r.id} 
                     style={{
-                      ...styles.reservationItem,
-                      ...(hoveredRes === res.id && styles.reservationItemHover),
+                      ...styles.reservaItem,
+                      ...(hoveredRes === r.id && styles.reservaItemHover)
                     }}
-                    onMouseEnter={() => setHoveredRes(res.id)}
+                    onMouseEnter={() => setHoveredRes(r.id)}
                     onMouseLeave={() => setHoveredRes(null)}
                   >
-                    <div style={styles.resTop}>
-                      <div style={styles.resInfo}>
-                        <p style={styles.resName}>{res.nombre}</p>
-                        <p style={styles.resPhone}>{res.telefono}</p>
+                    <div style={styles.reservaLeft}>
+                      <p style={styles.reservaTime}>{r.hora}</p>
+                      <div style={styles.reservaInfo}>
+                        <p style={styles.reservaName}>{r.nombre}</p>
+                        <p style={styles.reservaPhone}>{r.telefono}</p>
                       </div>
-                      <span style={styles.resTime}>{res.hora}</span>
                     </div>
-                    <div style={styles.resBottom}>
-                      <span style={styles.resPeople}>👥 {res.personas}</span>
+                    <div style={styles.reservaRight}>
+                      <span style={styles.reservaPeople}>👥 {r.personas}</span>
                       <span style={{
-                        ...styles.resBadge,
-                        background: statusInfo.bg,
-                        color: statusInfo.text,
+                        ...styles.reservaStatus,
+                        background: st.bg,
+                        color: st.color
                       }}>
-                        {statusInfo.label}
+                        {st.label}
                       </span>
+                      <button style={styles.whatsappBtn}>💬</button>
                     </div>
                   </div>
                 );
@@ -242,34 +221,30 @@ export default function Dashboard({ restaurantId, restaurantSlug, restaurantName
         </section>
 
         {/* CHAT */}
-        <section style={styles.chatPanel}>
-          <h3 style={styles.panelTitle}>Mensajes</h3>
-          <div style={styles.chatMessages}>
+        <section style={styles.chat}>
+          <h2 style={styles.sectionTitle}>Conversación activa</h2>
+          <div style={styles.messages}>
             {conversations.length === 0 ? (
-              <p style={styles.emptyState}>Sin mensajes</p>
+              <p style={styles.empty}>Sin mensajes</p>
             ) : (
-              conversations.map((msg) => (
-                <div key={msg.id} style={styles.messageBubble}>
-                  <div style={styles.bubbleContent}>
-                    <p style={styles.bubbleFrom}>{msg.guest_name || msg.guest_phone || 'Cliente'}</p>
-                    <p style={styles.bubbleText}>{msg.message_text}</p>
-                    <p style={styles.bubbleTime}>
-                      {msg.created_at ? new Date(msg.created_at).toLocaleTimeString('es-ES', {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      }) : ''}
+              conversations.map(msg => (
+                <div key={msg.id} style={styles.msgBubble}>
+                  <div style={styles.msgAvatar}>👤</div>
+                  <div style={styles.msgContent}>
+                    <p style={styles.msgName}>{msg.guest_name || msg.guest_phone}</p>
+                    <p style={styles.msgText}>{msg.message_text}</p>
+                    <p style={styles.msgTime}>
+                      {msg.created_at ? new Date(msg.created_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) : ''}
                     </p>
                   </div>
                 </div>
               ))
             )}
           </div>
-          <input
-            type="text"
-            placeholder="Responder..."
-            style={styles.chatInput}
-            disabled
-          />
+          <div style={styles.inputBox}>
+            <input type="text" placeholder="Escribe un mensaje..." style={styles.input} disabled />
+            <button style={styles.sendBtn}>➤</button>
+          </div>
         </section>
       </div>
     </div>
@@ -277,301 +252,300 @@ export default function Dashboard({ restaurantId, restaurantSlug, restaurantName
 }
 
 const styles = {
-  container: {
+  root: {
     minHeight: '100vh',
     background: '#fafaf7',
-    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", sans-serif',
-    padding: '16px 20px 20px',
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+    padding: '24px',
   },
   header: {
     display: 'flex',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '20px',
-    paddingBottom: '16px',
+    alignItems: 'flex-start',
+    marginBottom: '28px',
+    paddingBottom: '20px',
     borderBottom: '1px solid #e5e5e0',
   },
-  headerLeft: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-  },
-  logo: {
-    fontSize: '20px',
+  title: {
+    fontSize: '28px',
     fontWeight: '700',
+    margin: '0 0 8px 0',
     color: '#111',
-    margin: 0,
-    letterSpacing: '-0.5px',
   },
-  headerMeta: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '2px',
-  },
-  restaurantName: {
-    fontSize: '14px',
-    fontWeight: '600',
-    color: '#1a1a1a',
-    margin: 0,
-  },
-  headerDate: {
-    fontSize: '11px',
+  date: {
+    fontSize: '13px',
     color: '#888',
     margin: 0,
   },
-  headerRight: {
+  headerActions: {
     display: 'flex',
-    gap: '8px',
+    gap: '12px',
   },
-  btnSummary: {
-    background: 'none',
-    border: 'none',
-    fontSize: '18px',
+  btnHeader: {
+    padding: '8px 14px',
+    background: '#fff',
+    border: '1px solid #e5e5e0',
+    borderRadius: '6px',
+    fontSize: '12px',
+    fontWeight: '500',
     cursor: 'pointer',
-    padding: '4px',
-    opacity: 0.7,
-  },
-  btnNotif: {
-    background: 'none',
-    border: 'none',
-    fontSize: '18px',
-    cursor: 'pointer',
-    padding: '4px',
-  },
-  carouselSection: {
-    marginBottom: '18px',
-    overflowX: 'auto',
-    overflowY: 'hidden',
-    paddingBottom: '8px',
   },
   carousel: {
     display: 'flex',
-    gap: '8px',
-    minWidth: 'min-content',
+    gap: '10px',
+    marginBottom: '20px',
+    overflowX: 'auto',
+    paddingBottom: '8px',
   },
-  carouselCard: {
+  carouselItem: {
+    minWidth: '90px',
     padding: '12px 10px',
     background: '#fff',
     border: '1px solid #e5e5e0',
     borderRadius: '6px',
     textAlign: 'center',
-    minWidth: '70px',
     cursor: 'pointer',
-    transition: 'all 200ms ease',
+    transition: 'all 150ms',
   },
-  carouselCardActive: {
+  carouselItemActive: {
     background: '#f0fdf4',
     borderColor: '#22c55e',
     borderWidth: '2px',
   },
   carouselDay: {
-    fontSize: '10px',
-    color: '#999',
-    margin: '0 0 3px 0',
+    fontSize: '11px',
+    color: '#888',
+    margin: '0 0 4px 0',
     fontWeight: '500',
   },
   carouselNum: {
-    fontSize: '16px',
+    fontSize: '18px',
     fontWeight: '700',
     color: '#111',
-    margin: '0 0 3px 0',
+    margin: '0 0 4px 0',
   },
   carouselCount: {
-    fontSize: '10px',
+    fontSize: '11px',
     color: '#22c55e',
     margin: 0,
     fontWeight: '600',
   },
-  kpisSection: {
+  kpis: {
     display: 'grid',
     gridTemplateColumns: 'repeat(4, 1fr)',
-    gap: '12px',
-    marginBottom: '20px',
+    gap: '14px',
+    marginBottom: '24px',
   },
-  kpiCard: {
-    padding: '14px',
+  kpi: {
+    padding: '16px',
     background: '#fff',
     borderRadius: '6px',
     boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
     textAlign: 'center',
   },
   kpiIcon: {
-    fontSize: '20px',
-    margin: '0 0 6px 0',
-  },
-  kpiValue: {
     fontSize: '24px',
+    margin: '0 0 8px 0',
+  },
+  kpiNum: {
+    fontSize: '28px',
     fontWeight: '700',
     color: '#22c55e',
-    margin: '0 0 2px 0',
+    margin: '0 0 4px 0',
   },
   kpiLabel: {
-    fontSize: '10px',
+    fontSize: '11px',
     color: '#888',
     margin: 0,
     fontWeight: '500',
   },
-  mainGrid: {
+  main: {
     display: 'grid',
-    gridTemplateColumns: '65% 1fr',
-    gap: '16px',
+    gridTemplateColumns: '62% 1fr',
+    gap: '18px',
   },
-  reservationsPanel: {
+  reservas: {
     background: '#fff',
     borderRadius: '8px',
-    padding: '16px',
+    padding: '18px',
     boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
   },
-  chatPanel: {
+  chat: {
     background: '#fff',
     borderRadius: '8px',
-    padding: '16px',
+    padding: '18px',
     boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
     display: 'flex',
     flexDirection: 'column',
   },
-  panelTitle: {
+  sectionTitle: {
     fontSize: '13px',
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#111',
-    margin: '0 0 12px 0',
+    margin: '0 0 14px 0',
     textTransform: 'uppercase',
-    letterSpacing: '0.5px',
+    letterSpacing: '0.3px',
   },
-  reservationsList: {
+  reservasList: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '8px',
-    maxHeight: '550px',
+    gap: '6px',
+    maxHeight: '580px',
     overflowY: 'auto',
   },
-  reservationItem: {
-    padding: '12px',
+  reservaItem: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '10px 12px',
     background: '#f9f9f7',
     borderLeft: '3px solid #22c55e',
     borderRadius: '4px',
-    transition: 'all 150ms ease',
+    transition: 'all 120ms',
     cursor: 'pointer',
   },
-  reservationItemHover: {
+  reservaItemHover: {
     background: '#f3f8f6',
-    boxShadow: '0 2px 4px rgba(34, 197, 94, 0.1)',
+    boxShadow: '0 2px 6px rgba(34, 197, 94, 0.12)',
   },
-  resTop: {
+  reservaLeft: {
     display: 'flex',
-    justifyContent: 'space-between',
-    marginBottom: '8px',
     alignItems: 'flex-start',
-  },
-  resInfo: {
+    gap: '10px',
     flex: 1,
   },
-  resName: {
+  reservaTime: {
+    fontSize: '14px',
+    fontWeight: '700',
+    color: '#22c55e',
+    margin: 0,
+    minWidth: '50px',
+  },
+  reservaInfo: {
+    flex: 1,
+  },
+  reservaName: {
     fontSize: '12px',
     fontWeight: '600',
     color: '#111',
     margin: '0 0 2px 0',
   },
-  resPhone: {
-    fontSize: '11px',
-    color: '#777',
+  reservaPhone: {
+    fontSize: '10px',
+    color: '#888',
     margin: 0,
   },
-  resTime: {
-    fontSize: '14px',
-    fontWeight: '700',
-    color: '#22c55e',
-    minWidth: '50px',
-    textAlign: 'right',
-  },
-  resBottom: {
+  reservaRight: {
     display: 'flex',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    gap: '8px',
   },
-  resPeople: {
+  reservaPeople: {
     fontSize: '10px',
     color: '#666',
     fontWeight: '500',
   },
-  resBadge: {
-    fontSize: '10px',
+  reservaStatus: {
+    fontSize: '9px',
     fontWeight: '600',
     padding: '3px 6px',
     borderRadius: '3px',
   },
-  chatMessages: {
+  whatsappBtn: {
+    background: 'none',
+    border: 'none',
+    fontSize: '16px',
+    cursor: 'pointer',
+    padding: '4px',
+    opacity: 0.7,
+  },
+  messages: {
     flex: 1,
     overflowY: 'auto',
-    marginBottom: '10px',
     display: 'flex',
     flexDirection: 'column',
-    gap: '6px',
+    gap: '8px',
+    marginBottom: '10px',
     maxHeight: '500px',
   },
-  messageBubble: {
+  msgBubble: {
     display: 'flex',
-    justifyContent: 'flex-start',
-    marginBottom: '2px',
+    gap: '8px',
+    alignItems: 'flex-start',
   },
-  bubbleContent: {
+  msgAvatar: {
+    fontSize: '20px',
+    minWidth: '32px',
+    textAlign: 'center',
+  },
+  msgContent: {
     background: '#f0fdf4',
     border: '1px solid #dbeafe',
     borderLeft: '3px solid #22c55e',
     borderRadius: '6px',
     padding: '8px 10px',
-    maxWidth: '85%',
+    maxWidth: '280px',
   },
-  bubbleFrom: {
+  msgName: {
     fontSize: '10px',
     fontWeight: '600',
     color: '#16a34a',
     margin: '0 0 2px 0',
   },
-  bubbleText: {
+  msgText: {
     fontSize: '12px',
     color: '#1a1a1a',
     margin: '2px 0',
-    lineHeight: '1.3',
+    lineHeight: '1.35',
     wordBreak: 'break-word',
   },
-  bubbleTime: {
-    fontSize: '10px',
+  msgTime: {
+    fontSize: '9px',
     color: '#999',
     margin: '3px 0 0 0',
   },
-  chatInput: {
+  inputBox: {
+    display: 'flex',
+    gap: '6px',
+  },
+  input: {
+    flex: 1,
     padding: '8px 10px',
     border: '1px solid #e5e5e0',
     borderRadius: '4px',
     fontSize: '12px',
     fontFamily: 'inherit',
-    cursor: 'not-allowed',
     opacity: 0.5,
-    background: '#f9f9f7',
+    cursor: 'not-allowed',
   },
-  emptyState: {
+  sendBtn: {
+    padding: '8px 10px',
+    background: '#22c55e',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    fontSize: '14px',
+    opacity: 0.5,
+  },
+  empty: {
     textAlign: 'center',
-    padding: '30px 15px',
-    color: '#aaa',
+    padding: '40px 20px',
+    color: '#ccc',
     fontSize: '12px',
   },
-  loading: {
+  loader: {
     padding: '40px',
     textAlign: 'center',
     fontSize: '14px',
     color: '#888',
   },
-  errorContainer: {
+  errorBox: {
     padding: '40px',
     textAlign: 'center',
   },
-  errorText: {
-    color: '#dc2626',
-    fontSize: '13px',
-    marginBottom: '16px',
-  },
   retryBtn: {
+    marginTop: '12px',
     padding: '8px 14px',
     background: '#22c55e',
     color: '#fff',

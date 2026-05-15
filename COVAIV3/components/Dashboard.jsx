@@ -23,9 +23,7 @@ export default function Dashboard({ restaurantId, restaurantSlug, restaurantName
     setError(null);
     try {
       const todayStr = formatDate(today);
-      let useMock = false;
       
-      // Intentar cargar de Supabase
       const { data: todayRes, error: resError } = await supabase
         .from('reservations')
         .select('*')
@@ -34,7 +32,6 @@ export default function Dashboard({ restaurantId, restaurantSlug, restaurantName
         .order('hora', { ascending: true });
 
       if (resError || !todayRes || todayRes.length === 0) {
-        // Fallback a mock data
         setReservations(mockReservations);
         setConversations(mockConversations);
         setSevenDaysData(getSevenDaysMetrics());
@@ -55,9 +52,7 @@ export default function Dashboard({ restaurantId, restaurantSlug, restaurantName
           .order('created_at', { ascending: false })
           .limit(15);
         
-        if (!convError) {
-          convData = convRes || [];
-        }
+        if (!convError) convData = convRes || [];
       } catch (convErr) {
         console.warn('Conversations no disponibles:', convErr);
       }
@@ -83,7 +78,6 @@ export default function Dashboard({ restaurantId, restaurantSlug, restaurantName
         });
       }
       setSevenDaysData(sevenDays);
-
       calculateKPIs(todayRes || [], sevenDays);
       setUsingMock(false);
     } catch (err) {
@@ -103,9 +97,7 @@ export default function Dashboard({ restaurantId, restaurantSlug, restaurantName
       if (r.hora) {
         try {
           const hour = parseInt(r.hora.split(':')[0], 10);
-          if (!isNaN(hour) && (hour < 12 || hour > 22)) {
-            offHoursCount++;
-          }
+          if (!isNaN(hour) && (hour < 12 || hour > 22)) offHoursCount++;
         } catch (e) {}
       }
     });
@@ -122,14 +114,13 @@ export default function Dashboard({ restaurantId, restaurantSlug, restaurantName
 
   const getStatusStyle = (status) => {
     const s = status?.toLowerCase().trim() || '';
-    if (s === 'confirmada') return { bg: '#f0fdf4', color: '#16a34a', label: '✓ Confirmada' };
-    if (s === 'cancelada') return { bg: '#fef2f2', color: '#dc2626', label: '✗ Cancelada' };
-    if (s === 'pendiente') return { bg: '#fef3c7', color: '#ca8a04', label: '⏱ Pendiente' };
+    if (s === 'confirmada') return { bg: '#f0fdf4', color: '#15803d', label: '✓ Confirmada' };
+    if (s === 'cancelada') return { bg: '#fef2f2', color: '#b91c1c', label: '✗ Cancelada' };
+    if (s === 'pendiente') return { bg: '#fef3c7', color: '#b45309', label: '⏱ Pendiente' };
     return { bg: '#f3f4f6', color: '#6b7280', label: status };
   };
 
   if (loading) return <div style={styles.loader}>Cargando panel...</div>;
-
   if (error) return (
     <div style={styles.errorBox}>
       <p>{error}</p>
@@ -139,26 +130,24 @@ export default function Dashboard({ restaurantId, restaurantSlug, restaurantName
 
   return (
     <div style={styles.root}>
-      {/* HEADER */}
       <header style={styles.header}>
-        <div>
-          <h1 style={styles.title}>👋 Buenas tardes, {restaurantName}</h1>
-          <p style={styles.date}>{today.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
-          {usingMock && <p style={styles.mockBadge}>📊 Datos de demostración</p>}
+        <div style={styles.headerLeft}>
+          <div>
+            <h1 style={styles.title}>👋 Buenas tardes</h1>
+            <p style={styles.restaurantName}>{restaurantName}</p>
+            <p style={styles.date}>{today.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+            {usingMock && <p style={styles.mockBadge}>📊 Datos de demostración</p>}
+          </div>
         </div>
-        <div style={styles.headerActions}>
-          <button style={styles.btnHeader}>📊 Resumen mensual</button>
+        <div style={styles.headerRight}>
+          <button style={styles.btnHeader}>📊</button>
           <button style={styles.btnHeader}>🔔</button>
         </div>
       </header>
 
-      {/* CARRUSEL 7 DÍAS */}
       <div style={styles.carousel}>
         {sevenDaysData.map((d, i) => (
-          <div key={i} style={{
-            ...styles.carouselItem,
-            ...(i === 6 && styles.carouselItemActive)
-          }}>
+          <div key={i} style={{...styles.carouselItem, ...(i === 6 && styles.carouselItemActive)}}>
             <p style={styles.carouselDay}>{d.day}</p>
             <p style={styles.carouselNum}>{d.dayNum}</p>
             <p style={styles.carouselCount}>{d.count}</p>
@@ -166,33 +155,22 @@ export default function Dashboard({ restaurantId, restaurantSlug, restaurantName
         ))}
       </div>
 
-      {/* KPIs */}
       <div style={styles.kpis}>
-        <div style={styles.kpi}>
-          <p style={styles.kpiIcon}>📅</p>
-          <p style={styles.kpiNum}>{kpis.today}</p>
-          <p style={styles.kpiLabel}>Reservas hoy</p>
-        </div>
-        <div style={styles.kpi}>
-          <p style={styles.kpiIcon}>👥</p>
-          <p style={styles.kpiNum}>{kpis.week}</p>
-          <p style={styles.kpiLabel}>Reservas esta semana</p>
-        </div>
-        <div style={styles.kpi}>
-          <p style={styles.kpiIcon}>📊</p>
-          <p style={styles.kpiNum}>{kpis.month}</p>
-          <p style={styles.kpiLabel}>Reservas este mes</p>
-        </div>
-        <div style={styles.kpi}>
-          <p style={styles.kpiIcon}>🌙</p>
-          <p style={styles.kpiNum}>{kpis.offHours}</p>
-          <p style={styles.kpiLabel}>Fuera de horario</p>
-        </div>
+        {[
+          { icon: '📅', label: 'Reservas hoy', value: kpis.today },
+          { icon: '👥', label: 'Esta semana', value: kpis.week },
+          { icon: '📊', label: 'Este mes', value: kpis.month },
+          { icon: '🌙', label: 'Fuera horario', value: kpis.offHours }
+        ].map((kpi, i) => (
+          <div key={i} style={styles.kpi}>
+            <p style={styles.kpiIcon}>{kpi.icon}</p>
+            <p style={styles.kpiNum}>{kpi.value}</p>
+            <p style={styles.kpiLabel}>{kpi.label}</p>
+          </div>
+        ))}
       </div>
 
-      {/* MAIN: Reservas + Chat */}
       <div style={styles.main}>
-        {/* RESERVAS */}
         <section style={styles.reservas}>
           <h2 style={styles.sectionTitle}>Reservas de hoy</h2>
           <div style={styles.reservasList}>
@@ -202,15 +180,7 @@ export default function Dashboard({ restaurantId, restaurantSlug, restaurantName
               reservations.map(r => {
                 const st = getStatusStyle(r.status);
                 return (
-                  <div 
-                    key={r.id} 
-                    style={{
-                      ...styles.reservaItem,
-                      ...(hoveredRes === r.id && styles.reservaItemHover)
-                    }}
-                    onMouseEnter={() => setHoveredRes(r.id)}
-                    onMouseLeave={() => setHoveredRes(null)}
-                  >
+                  <div key={r.id} style={{...styles.reservaItem, ...(hoveredRes === r.id && styles.reservaItemHover)}} onMouseEnter={() => setHoveredRes(r.id)} onMouseLeave={() => setHoveredRes(null)}>
                     <div style={styles.reservaLeft}>
                       <p style={styles.reservaTime}>{r.hora}</p>
                       <div style={styles.reservaInfo}>
@@ -220,13 +190,7 @@ export default function Dashboard({ restaurantId, restaurantSlug, restaurantName
                     </div>
                     <div style={styles.reservaRight}>
                       <span style={styles.reservaPeople}>👥 {r.personas}</span>
-                      <span style={{
-                        ...styles.reservaStatus,
-                        background: st.bg,
-                        color: st.color
-                      }}>
-                        {st.label}
-                      </span>
+                      <span style={{...styles.reservaStatus, background: st.bg, color: st.color}}>{st.label}</span>
                       <button style={styles.whatsappBtn}>💬</button>
                     </div>
                   </div>
@@ -236,29 +200,25 @@ export default function Dashboard({ restaurantId, restaurantSlug, restaurantName
           </div>
         </section>
 
-        {/* CHAT */}
         <section style={styles.chat}>
           <h2 style={styles.sectionTitle}>Conversación activa</h2>
           <div style={styles.messages}>
             {conversations.length === 0 ? (
               <p style={styles.empty}>Sin mensajes</p>
             ) : (
-              conversations.map(msg => (
-                <div key={msg.id} style={styles.msgBubble}>
-                  <div style={styles.msgAvatar}>👤</div>
-                  <div style={styles.msgContent}>
+              conversations.map((msg, idx) => (
+                <div key={msg.id} style={{...styles.msgGroup, ...(idx > 0 && idx === conversations.length - 1 && {marginTop: '8px'})}}>
+                  <div style={styles.msgBubble}>
                     <p style={styles.msgName}>{msg.guest_name || msg.guest_phone}</p>
                     <p style={styles.msgText}>{msg.message_text}</p>
-                    <p style={styles.msgTime}>
-                      {msg.created_at ? new Date(msg.created_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) : ''}
-                    </p>
+                    <p style={styles.msgTime}>{msg.created_at ? new Date(msg.created_at).toLocaleTimeString('es-ES', {hour: '2-digit', minute: '2-digit'}) : ''}</p>
                   </div>
                 </div>
               ))
             )}
           </div>
           <div style={styles.inputBox}>
-            <input type="text" placeholder="Escribe un mensaje..." style={styles.input} disabled />
+            <input type="text" placeholder="Escribe..." style={styles.input} disabled />
             <button style={styles.sendBtn}>➤</button>
           </div>
         </section>
@@ -268,313 +228,53 @@ export default function Dashboard({ restaurantId, restaurantSlug, restaurantName
 }
 
 const styles = {
-  root: {
-    minHeight: '100vh',
-    background: '#fafaf7',
-    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-    padding: '24px',
-  },
-  header: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: '28px',
-    paddingBottom: '20px',
-    borderBottom: '1px solid #e5e5e0',
-  },
-  title: {
-    fontSize: '28px',
-    fontWeight: '700',
-    margin: '0 0 8px 0',
-    color: '#111',
-  },
-  date: {
-    fontSize: '13px',
-    color: '#888',
-    margin: '0 0 4px 0',
-  },
-  mockBadge: {
-    fontSize: '11px',
-    color: '#22c55e',
-    margin: 0,
-    fontWeight: '600',
-  },
-  headerActions: {
-    display: 'flex',
-    gap: '12px',
-  },
-  btnHeader: {
-    padding: '8px 14px',
-    background: '#fff',
-    border: '1px solid #e5e5e0',
-    borderRadius: '6px',
-    fontSize: '12px',
-    fontWeight: '500',
-    cursor: 'pointer',
-  },
-  carousel: {
-    display: 'flex',
-    gap: '10px',
-    marginBottom: '20px',
-    overflowX: 'auto',
-    paddingBottom: '8px',
-  },
-  carouselItem: {
-    minWidth: '90px',
-    padding: '12px 10px',
-    background: '#fff',
-    border: '1px solid #e5e5e0',
-    borderRadius: '6px',
-    textAlign: 'center',
-    cursor: 'pointer',
-    transition: 'all 150ms',
-  },
-  carouselItemActive: {
-    background: '#f0fdf4',
-    borderColor: '#22c55e',
-    borderWidth: '2px',
-  },
-  carouselDay: {
-    fontSize: '11px',
-    color: '#888',
-    margin: '0 0 4px 0',
-    fontWeight: '500',
-  },
-  carouselNum: {
-    fontSize: '18px',
-    fontWeight: '700',
-    color: '#111',
-    margin: '0 0 4px 0',
-  },
-  carouselCount: {
-    fontSize: '11px',
-    color: '#22c55e',
-    margin: 0,
-    fontWeight: '600',
-  },
-  kpis: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(4, 1fr)',
-    gap: '14px',
-    marginBottom: '24px',
-  },
-  kpi: {
-    padding: '16px',
-    background: '#fff',
-    borderRadius: '6px',
-    boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
-    textAlign: 'center',
-  },
-  kpiIcon: {
-    fontSize: '24px',
-    margin: '0 0 8px 0',
-  },
-  kpiNum: {
-    fontSize: '28px',
-    fontWeight: '700',
-    color: '#22c55e',
-    margin: '0 0 4px 0',
-  },
-  kpiLabel: {
-    fontSize: '11px',
-    color: '#888',
-    margin: 0,
-    fontWeight: '500',
-  },
-  main: {
-    display: 'grid',
-    gridTemplateColumns: '62% 1fr',
-    gap: '18px',
-  },
-  reservas: {
-    background: '#fff',
-    borderRadius: '8px',
-    padding: '18px',
-    boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-  },
-  chat: {
-    background: '#fff',
-    borderRadius: '8px',
-    padding: '18px',
-    boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-    display: 'flex',
-    flexDirection: 'column',
-  },
-  sectionTitle: {
-    fontSize: '13px',
-    fontWeight: '700',
-    color: '#111',
-    margin: '0 0 14px 0',
-    textTransform: 'uppercase',
-    letterSpacing: '0.3px',
-  },
-  reservasList: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '6px',
-    maxHeight: '580px',
-    overflowY: 'auto',
-  },
-  reservaItem: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '10px 12px',
-    background: '#f9f9f7',
-    borderLeft: '3px solid #22c55e',
-    borderRadius: '4px',
-    transition: 'all 120ms',
-    cursor: 'pointer',
-  },
-  reservaItemHover: {
-    background: '#f3f8f6',
-    boxShadow: '0 2px 6px rgba(34, 197, 94, 0.12)',
-  },
-  reservaLeft: {
-    display: 'flex',
-    alignItems: 'flex-start',
-    gap: '10px',
-    flex: 1,
-  },
-  reservaTime: {
-    fontSize: '14px',
-    fontWeight: '700',
-    color: '#22c55e',
-    margin: 0,
-    minWidth: '50px',
-  },
-  reservaInfo: {
-    flex: 1,
-  },
-  reservaName: {
-    fontSize: '12px',
-    fontWeight: '600',
-    color: '#111',
-    margin: '0 0 2px 0',
-  },
-  reservaPhone: {
-    fontSize: '10px',
-    color: '#888',
-    margin: 0,
-  },
-  reservaRight: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-  },
-  reservaPeople: {
-    fontSize: '10px',
-    color: '#666',
-    fontWeight: '500',
-  },
-  reservaStatus: {
-    fontSize: '9px',
-    fontWeight: '600',
-    padding: '3px 6px',
-    borderRadius: '3px',
-  },
-  whatsappBtn: {
-    background: 'none',
-    border: 'none',
-    fontSize: '16px',
-    cursor: 'pointer',
-    padding: '4px',
-    opacity: 0.7,
-  },
-  messages: {
-    flex: 1,
-    overflowY: 'auto',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '8px',
-    marginBottom: '10px',
-    maxHeight: '500px',
-  },
-  msgBubble: {
-    display: 'flex',
-    gap: '8px',
-    alignItems: 'flex-start',
-  },
-  msgAvatar: {
-    fontSize: '20px',
-    minWidth: '32px',
-    textAlign: 'center',
-  },
-  msgContent: {
-    background: '#f0fdf4',
-    border: '1px solid #dbeafe',
-    borderLeft: '3px solid #22c55e',
-    borderRadius: '6px',
-    padding: '8px 10px',
-    maxWidth: '280px',
-  },
-  msgName: {
-    fontSize: '10px',
-    fontWeight: '600',
-    color: '#16a34a',
-    margin: '0 0 2px 0',
-  },
-  msgText: {
-    fontSize: '12px',
-    color: '#1a1a1a',
-    margin: '2px 0',
-    lineHeight: '1.35',
-    wordBreak: 'break-word',
-  },
-  msgTime: {
-    fontSize: '9px',
-    color: '#999',
-    margin: '3px 0 0 0',
-  },
-  inputBox: {
-    display: 'flex',
-    gap: '6px',
-  },
-  input: {
-    flex: 1,
-    padding: '8px 10px',
-    border: '1px solid #e5e5e0',
-    borderRadius: '4px',
-    fontSize: '12px',
-    fontFamily: 'inherit',
-    opacity: 0.5,
-    cursor: 'not-allowed',
-  },
-  sendBtn: {
-    padding: '8px 10px',
-    background: '#22c55e',
-    color: '#fff',
-    border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    fontSize: '14px',
-    opacity: 0.5,
-  },
-  empty: {
-    textAlign: 'center',
-    padding: '40px 20px',
-    color: '#ccc',
-    fontSize: '12px',
-  },
-  loader: {
-    padding: '40px',
-    textAlign: 'center',
-    fontSize: '14px',
-    color: '#888',
-  },
-  errorBox: {
-    padding: '40px',
-    textAlign: 'center',
-  },
-  retryBtn: {
-    marginTop: '12px',
-    padding: '8px 14px',
-    background: '#22c55e',
-    color: '#fff',
-    border: 'none',
-    borderRadius: '4px',
-    fontSize: '12px',
-    fontWeight: '600',
-    cursor: 'pointer',
-  },
+  root: { minHeight: '100vh', background: '#fafaf7', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', padding: '16px' },
+  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px', paddingBottom: '16px', borderBottom: '1px solid #e5e5e0' },
+  headerLeft: { flex: 1 },
+  title: { fontSize: '22px', fontWeight: '600', margin: '0 0 4px 0', color: '#111' },
+  restaurantName: { fontSize: '16px', fontWeight: '700', margin: '0 0 2px 0', color: '#1a1a1a' },
+  date: { fontSize: '12px', color: '#888', margin: '0 0 4px 0' },
+  mockBadge: { fontSize: '10px', color: '#22c55e', margin: 0, fontWeight: '600' },
+  headerRight: { display: 'flex', gap: '8px' },
+  btnHeader: { background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', padding: '4px 8px' },
+  carousel: { display: 'flex', gap: '8px', marginBottom: '16px', overflowX: 'auto', paddingBottom: '8px' },
+  carouselItem: { minWidth: '80px', padding: '10px 8px', background: '#fff', border: '1px solid #e5e5e0', borderRadius: '6px', textAlign: 'center', cursor: 'pointer', transition: 'all 150ms' },
+  carouselItemActive: { background: '#f0fdf4', borderColor: '#22c55e', borderWidth: '2px' },
+  carouselDay: { fontSize: '10px', color: '#888', margin: '0 0 3px 0', fontWeight: '500' },
+  carouselNum: { fontSize: '16px', fontWeight: '700', color: '#111', margin: '0 0 3px 0' },
+  carouselCount: { fontSize: '10px', color: '#22c55e', margin: 0, fontWeight: '600' },
+  kpis: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: '10px', marginBottom: '18px' },
+  kpi: { padding: '12px', background: '#fff', borderRadius: '6px', boxShadow: '0 1px 2px rgba(0,0,0,0.04)', textAlign: 'center' },
+  kpiIcon: { fontSize: '20px', margin: '0 0 6px 0' },
+  kpiNum: { fontSize: '24px', fontWeight: '700', color: '#22c55e', margin: '0 0 3px 0' },
+  kpiLabel: { fontSize: '10px', color: '#888', margin: 0, fontWeight: '500' },
+  main: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' },
+  reservas: { background: '#fff', borderRadius: '8px', padding: '14px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' },
+  chat: { background: '#fff', borderRadius: '8px', padding: '14px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column' },
+  sectionTitle: { fontSize: '12px', fontWeight: '700', color: '#111', margin: '0 0 10px 0', textTransform: 'uppercase', letterSpacing: '0.3px' },
+  reservasList: { display: 'flex', flexDirection: 'column', gap: '5px', maxHeight: '500px', overflowY: 'auto' },
+  reservaItem: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', background: '#f9f9f7', borderLeft: '3px solid #22c55e', borderRadius: '4px', transition: 'all 120ms', cursor: 'pointer' },
+  reservaItemHover: { background: '#f3f8f6', boxShadow: '0 2px 4px rgba(34, 197, 94, 0.1)' },
+  reservaLeft: { display: 'flex', alignItems: 'flex-start', gap: '8px', flex: 1 },
+  reservaTime: { fontSize: '13px', fontWeight: '700', color: '#22c55e', margin: 0, minWidth: '45px' },
+  reservaInfo: { flex: 1 },
+  reservaName: { fontSize: '11px', fontWeight: '600', color: '#111', margin: '0 0 1px 0' },
+  reservaPhone: { fontSize: '9px', color: '#888', margin: 0 },
+  reservaRight: { display: 'flex', alignItems: 'center', gap: '6px' },
+  reservaPeople: { fontSize: '9px', color: '#666', fontWeight: '500' },
+  reservaStatus: { fontSize: '8px', fontWeight: '600', padding: '2px 5px', borderRadius: '3px' },
+  whatsappBtn: { background: 'none', border: 'none', fontSize: '14px', cursor: 'pointer', padding: '2px', opacity: 0.7 },
+  messages: { flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '8px', maxHeight: '400px' },
+  msgGroup: {},
+  msgBubble: { background: '#f0fdf4', border: '1px solid #dbeafe', borderLeft: '3px solid #22c55e', borderRadius: '6px', padding: '7px 9px', maxWidth: '95%' },
+  msgName: { fontSize: '9px', fontWeight: '600', color: '#16a34a', margin: '0 0 2px 0' },
+  msgText: { fontSize: '11px', color: '#1a1a1a', margin: '2px 0', lineHeight: '1.3', wordBreak: 'break-word' },
+  msgTime: { fontSize: '8px', color: '#999', margin: '2px 0 0 0' },
+  inputBox: { display: 'flex', gap: '5px' },
+  input: { flex: 1, padding: '7px 9px', border: '1px solid #e5e5e0', borderRadius: '4px', fontSize: '11px', fontFamily: 'inherit', opacity: 0.5, cursor: 'not-allowed' },
+  sendBtn: { padding: '7px 9px', background: '#22c55e', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px', opacity: 0.5 },
+  empty: { textAlign: 'center', padding: '30px 15px', color: '#ddd', fontSize: '11px' },
+  loader: { padding: '40px', textAlign: 'center', fontSize: '14px', color: '#888' },
+  errorBox: { padding: '40px', textAlign: 'center' },
+  retryBtn: { marginTop: '12px', padding: '8px 14px', background: '#22c55e', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }
 };

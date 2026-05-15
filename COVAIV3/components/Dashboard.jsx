@@ -9,6 +9,7 @@ export default function Dashboard({ restaurantId, restaurantSlug, restaurantName
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [today] = useState(new Date());
+  const [hoveredRes, setHoveredRes] = useState(null);
 
   useEffect(() => {
     loadAllData();
@@ -21,7 +22,6 @@ export default function Dashboard({ restaurantId, restaurantSlug, restaurantName
     try {
       const todayStr = formatDate(today);
       
-      // 1. CARGAR RESERVAS DE HOY
       const { data: todayRes, error: resError } = await supabase
         .from('reservations')
         .select('*')
@@ -32,7 +32,6 @@ export default function Dashboard({ restaurantId, restaurantSlug, restaurantName
       if (resError) throw resError;
       setReservations(todayRes || []);
 
-      // 2. CARGAR CONVERSACIONES (CON FILTRO MULTI-TENANT SEGURO)
       let convData = [];
       try {
         const { data: convRes, error: convError } = await supabase
@@ -50,7 +49,6 @@ export default function Dashboard({ restaurantId, restaurantSlug, restaurantName
       }
       setConversations(convData);
 
-      // 3. CARGAR DATA 7 DÍAS
       const sevenDays = [];
       for (let i = 6; i >= 0; i--) {
         const d = new Date(today);
@@ -65,14 +63,13 @@ export default function Dashboard({ restaurantId, restaurantSlug, restaurantName
 
         sevenDays.push({
           date: dateStr,
-          day: ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'][d.getDay()],
+          day: ['D', 'L', 'M', 'X', 'J', 'V', 'S'][d.getDay()],
           count: count || 0,
           dayNum: d.getDate(),
         });
       }
       setSevenDaysData(sevenDays);
 
-      // 4. CALCULAR KPIs
       calculateKPIs(todayRes || [], sevenDays);
     } catch (err) {
       console.error('Error loading dashboard:', err);
@@ -94,9 +91,7 @@ export default function Dashboard({ restaurantId, restaurantSlug, restaurantName
           if (!isNaN(hour) && (hour < 12 || hour > 22)) {
             offHoursCount++;
           }
-        } catch (e) {
-          // Ignorar errores de parsing
-        }
+        } catch (e) {}
       }
     });
 
@@ -112,20 +107,14 @@ export default function Dashboard({ restaurantId, restaurantSlug, restaurantName
 
   const getStatusColor = (status) => {
     const statusLower = status?.toLowerCase().trim() || '';
-    
-    if (statusLower === 'confirmada') return styles.statusConfirmed;
-    if (statusLower === 'cancelada') return styles.statusCancelled;
-    if (statusLower === 'pendiente') return styles.statusPending;
-    
-    return styles.statusDefault;
-  };
-
-  const getStatusLabel = (status) => {
-    return status?.charAt(0).toUpperCase() + status?.slice(1) || 'Sin estado';
+    if (statusLower === 'confirmada') return { bg: '#f0fdf4', text: '#16a34a', label: 'Confirmada' };
+    if (statusLower === 'cancelada') return { bg: '#fef2f2', text: '#dc2626', label: 'Cancelada' };
+    if (statusLower === 'pendiente') return { bg: '#fef3c7', text: '#ca8a04', label: 'Pendiente' };
+    return { bg: '#f3f4f6', text: '#6b7280', label: status || 'Sin estado' };
   };
 
   if (loading) {
-    return <div style={styles.loading}>Cargando dashboard...</div>;
+    return <div style={styles.loading}>Cargando panel...</div>;
   }
 
   if (error) {
@@ -150,25 +139,21 @@ export default function Dashboard({ restaurantId, restaurantSlug, restaurantName
       {/* HEADER */}
       <header style={styles.header}>
         <div style={styles.headerLeft}>
-          <h1 style={styles.logo}>COVAI</h1>
-          <div>
-            <h2 style={styles.restaurantName}>Bienvenido, {restaurantName}</h2>
+          <h1 style={styles.logo}>⭐ COVAI</h1>
+          <div style={styles.headerMeta}>
+            <h2 style={styles.restaurantName}>{restaurantName}</h2>
             <p style={styles.headerDate}>
-              {today.toLocaleDateString('es-ES', { 
-                weekday: 'long', 
-                month: 'long', 
-                day: 'numeric' 
-              })}
+              {today.toLocaleDateString('es-ES', { weekday: 'short', month: 'short', day: 'numeric' })}
             </p>
           </div>
         </div>
         <div style={styles.headerRight}>
-          <button style={styles.btnSummary}>📊 Resumen Mensual</button>
-          <div style={styles.notificationBell}>🔔</div>
+          <button style={styles.btnSummary}>📊</button>
+          <button style={styles.btnNotif}>🔔</button>
         </div>
       </header>
 
-      {/* CARRUSEL 7 DÍAS */}
+      {/* CARRUSEL */}
       <section style={styles.carouselSection}>
         <div style={styles.carousel}>
           {sevenDaysData.map((dayData, idx) => (
@@ -176,11 +161,11 @@ export default function Dashboard({ restaurantId, restaurantSlug, restaurantName
               key={idx}
               style={{
                 ...styles.carouselCard,
-                ...(idx === sevenDaysData.length - 1 ? styles.carouselCardActive : {}),
+                ...(idx === sevenDaysData.length - 1 && styles.carouselCardActive),
               }}
             >
               <p style={styles.carouselDay}>{dayData.day}</p>
-              <p style={styles.carouselDate}>{dayData.dayNum}</p>
+              <p style={styles.carouselNum}>{dayData.dayNum}</p>
               <p style={styles.carouselCount}>{dayData.count}</p>
             </div>
           ))}
@@ -190,73 +175,91 @@ export default function Dashboard({ restaurantId, restaurantSlug, restaurantName
       {/* KPIs */}
       <section style={styles.kpisSection}>
         <div style={styles.kpiCard}>
-          <p style={styles.kpiLabel}>Hoy</p>
+          <p style={styles.kpiIcon}>📅</p>
           <p style={styles.kpiValue}>{kpis.today}</p>
+          <p style={styles.kpiLabel}>Hoy</p>
         </div>
         <div style={styles.kpiCard}>
-          <p style={styles.kpiLabel}>Esta Semana</p>
+          <p style={styles.kpiIcon}>📆</p>
           <p style={styles.kpiValue}>{kpis.week}</p>
+          <p style={styles.kpiLabel}>Semana</p>
         </div>
         <div style={styles.kpiCard}>
-          <p style={styles.kpiLabel}>Este Mes</p>
+          <p style={styles.kpiIcon}>📊</p>
           <p style={styles.kpiValue}>{kpis.month}</p>
+          <p style={styles.kpiLabel}>Mes</p>
         </div>
         <div style={styles.kpiCard}>
-          <p style={styles.kpiLabel}>Fuera Horario</p>
+          <p style={styles.kpiIcon}>🌙</p>
           <p style={styles.kpiValue}>{kpis.offHours}</p>
+          <p style={styles.kpiLabel}>Fuera horario</p>
         </div>
       </section>
 
-      {/* MAIN: Reservas + Chat */}
+      {/* MAIN CONTENT */}
       <div style={styles.mainGrid}>
-        {/* IZQUIERDA: RESERVAS */}
+        {/* RESERVAS */}
         <section style={styles.reservationsPanel}>
-          <h2 style={styles.panelTitle}>Reservas de Hoy</h2>
+          <h3 style={styles.panelTitle}>Reservas Hoy</h3>
           <div style={styles.reservationsList}>
             {reservations.length === 0 ? (
               <p style={styles.emptyState}>Sin reservas para hoy</p>
             ) : (
-              reservations.map((res) => (
-                <div key={res.id} style={styles.reservationItem}>
-                  <div style={styles.resItemTop}>
-                    <div>
-                      <p style={styles.resName}>{res.nombre || 'Sin nombre'}</p>
-                      <p style={styles.resPhone}>📱 {res.telefono || 'Sin teléfono'}</p>
+              reservations.map((res) => {
+                const statusInfo = getStatusColor(res.status);
+                return (
+                  <div 
+                    key={res.id} 
+                    style={{
+                      ...styles.reservationItem,
+                      ...(hoveredRes === res.id && styles.reservationItemHover),
+                    }}
+                    onMouseEnter={() => setHoveredRes(res.id)}
+                    onMouseLeave={() => setHoveredRes(null)}
+                  >
+                    <div style={styles.resTop}>
+                      <div style={styles.resInfo}>
+                        <p style={styles.resName}>{res.nombre}</p>
+                        <p style={styles.resPhone}>{res.telefono}</p>
+                      </div>
+                      <span style={styles.resTime}>{res.hora}</span>
                     </div>
-                    <span style={styles.resTime}>{res.hora || '--:--'}</span>
+                    <div style={styles.resBottom}>
+                      <span style={styles.resPeople}>👥 {res.personas}</span>
+                      <span style={{
+                        ...styles.resBadge,
+                        background: statusInfo.bg,
+                        color: statusInfo.text,
+                      }}>
+                        {statusInfo.label}
+                      </span>
+                    </div>
                   </div>
-                  <div style={styles.resItemBottom}>
-                    <span style={styles.resPeople}>👥 {res.personas || 0} personas</span>
-                    <span style={{
-                      ...styles.resStatus,
-                      ...getStatusColor(res.status),
-                    }}>
-                      {getStatusLabel(res.status)}
-                    </span>
-                  </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </section>
 
-        {/* DERECHA: CONVERSACIONES */}
+        {/* CHAT */}
         <section style={styles.chatPanel}>
-          <h2 style={styles.panelTitle}>Últimos Mensajes</h2>
+          <h3 style={styles.panelTitle}>Mensajes</h3>
           <div style={styles.chatMessages}>
             {conversations.length === 0 ? (
               <p style={styles.emptyState}>Sin mensajes</p>
             ) : (
               conversations.map((msg) => (
-                <div key={msg.id} style={styles.chatBubble}>
-                  <p style={styles.chatSender}>{msg.guest_name || msg.guest_phone || 'Cliente'}</p>
-                  <p style={styles.chatMessage}>{msg.message_text || ''}</p>
-                  <p style={styles.chatTimeStamp}>
-                    {msg.created_at ? new Date(msg.created_at).toLocaleTimeString('es-ES', {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    }) : 'Sin hora'}
-                  </p>
+                <div key={msg.id} style={styles.messageBubble}>
+                  <div style={styles.bubbleContent}>
+                    <p style={styles.bubbleFrom}>{msg.guest_name || msg.guest_phone || 'Cliente'}</p>
+                    <p style={styles.bubbleText}>{msg.message_text}</p>
+                    <p style={styles.bubbleTime}>
+                      {msg.created_at ? new Date(msg.created_at).toLocaleTimeString('es-ES', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      }) : ''}
+                    </p>
+                  </div>
                 </div>
               ))
             )}
@@ -276,77 +279,85 @@ export default function Dashboard({ restaurantId, restaurantSlug, restaurantName
 const styles = {
   container: {
     minHeight: '100vh',
-    background: '#fafaf8',
-    fontFamily: 'Inter, -apple-system, sans-serif',
-    padding: '24px',
+    background: '#fafaf7',
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", sans-serif',
+    padding: '16px 20px 20px',
   },
   header: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: '32px',
-    paddingBottom: '24px',
-    borderBottom: '1px solid #e8e8e3',
+    marginBottom: '20px',
+    paddingBottom: '16px',
+    borderBottom: '1px solid #e5e5e0',
   },
   headerLeft: {
     display: 'flex',
     alignItems: 'center',
-    gap: '20px',
+    gap: '12px',
   },
   logo: {
-    fontSize: '28px',
+    fontSize: '20px',
     fontWeight: '700',
     color: '#111',
     margin: 0,
+    letterSpacing: '-0.5px',
+  },
+  headerMeta: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '2px',
   },
   restaurantName: {
-    fontSize: '20px',
+    fontSize: '14px',
     fontWeight: '600',
-    color: '#111',
-    margin: '0 0 4px 0',
+    color: '#1a1a1a',
+    margin: 0,
   },
   headerDate: {
-    fontSize: '13px',
-    color: '#777',
+    fontSize: '11px',
+    color: '#888',
     margin: 0,
   },
   headerRight: {
     display: 'flex',
-    gap: '16px',
-    alignItems: 'center',
+    gap: '8px',
   },
   btnSummary: {
-    padding: '10px 16px',
-    background: '#fff',
-    color: '#111',
-    border: '1px solid #e8e8e3',
-    borderRadius: '8px',
-    fontSize: '13px',
-    fontWeight: '500',
+    background: 'none',
+    border: 'none',
+    fontSize: '18px',
     cursor: 'pointer',
+    padding: '4px',
+    opacity: 0.7,
   },
-  notificationBell: {
-    fontSize: '24px',
+  btnNotif: {
+    background: 'none',
+    border: 'none',
+    fontSize: '18px',
     cursor: 'pointer',
+    padding: '4px',
   },
   carouselSection: {
-    marginBottom: '32px',
+    marginBottom: '18px',
     overflowX: 'auto',
-    paddingBottom: '12px',
+    overflowY: 'hidden',
+    paddingBottom: '8px',
   },
   carousel: {
     display: 'flex',
-    gap: '12px',
+    gap: '8px',
     minWidth: 'min-content',
   },
   carouselCard: {
-    padding: '16px 12px',
+    padding: '12px 10px',
     background: '#fff',
-    border: '1px solid #e8e8e3',
-    borderRadius: '8px',
+    border: '1px solid #e5e5e0',
+    borderRadius: '6px',
     textAlign: 'center',
-    minWidth: '100px',
+    minWidth: '70px',
     cursor: 'pointer',
+    transition: 'all 200ms ease',
   },
   carouselCardActive: {
     background: '#f0fdf4',
@@ -354,19 +365,19 @@ const styles = {
     borderWidth: '2px',
   },
   carouselDay: {
-    fontSize: '12px',
-    color: '#777',
-    margin: '0 0 4px 0',
+    fontSize: '10px',
+    color: '#999',
+    margin: '0 0 3px 0',
     fontWeight: '500',
   },
-  carouselDate: {
-    fontSize: '18px',
+  carouselNum: {
+    fontSize: '16px',
     fontWeight: '700',
     color: '#111',
-    margin: '0 0 4px 0',
+    margin: '0 0 3px 0',
   },
   carouselCount: {
-    fontSize: '11px',
+    fontSize: '10px',
     color: '#22c55e',
     margin: 0,
     fontWeight: '600',
@@ -374,171 +385,182 @@ const styles = {
   kpisSection: {
     display: 'grid',
     gridTemplateColumns: 'repeat(4, 1fr)',
-    gap: '16px',
-    marginBottom: '32px',
+    gap: '12px',
+    marginBottom: '20px',
   },
   kpiCard: {
-    padding: '20px',
+    padding: '14px',
     background: '#fff',
-    borderRadius: '8px',
-    boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+    borderRadius: '6px',
+    boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
     textAlign: 'center',
   },
-  kpiLabel: {
-    fontSize: '12px',
-    color: '#777',
-    margin: '0 0 8px 0',
-    fontWeight: '500',
+  kpiIcon: {
+    fontSize: '20px',
+    margin: '0 0 6px 0',
   },
   kpiValue: {
-    fontSize: '32px',
+    fontSize: '24px',
     fontWeight: '700',
     color: '#22c55e',
+    margin: '0 0 2px 0',
+  },
+  kpiLabel: {
+    fontSize: '10px',
+    color: '#888',
     margin: 0,
+    fontWeight: '500',
   },
   mainGrid: {
     display: 'grid',
     gridTemplateColumns: '65% 1fr',
-    gap: '20px',
+    gap: '16px',
   },
   reservationsPanel: {
     background: '#fff',
-    borderRadius: '12px',
-    padding: '24px',
+    borderRadius: '8px',
+    padding: '16px',
     boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
   },
   chatPanel: {
     background: '#fff',
-    borderRadius: '12px',
-    padding: '24px',
+    borderRadius: '8px',
+    padding: '16px',
     boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
     display: 'flex',
     flexDirection: 'column',
   },
   panelTitle: {
-    fontSize: '16px',
+    fontSize: '13px',
     fontWeight: '600',
     color: '#111',
-    margin: '0 0 16px 0',
+    margin: '0 0 12px 0',
+    textTransform: 'uppercase',
+    letterSpacing: '0.5px',
   },
   reservationsList: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '12px',
-    maxHeight: '600px',
+    gap: '8px',
+    maxHeight: '550px',
     overflowY: 'auto',
   },
   reservationItem: {
-    padding: '16px',
+    padding: '12px',
     background: '#f9f9f7',
-    borderLeft: '4px solid #22c55e',
-    borderRadius: '8px',
+    borderLeft: '3px solid #22c55e',
+    borderRadius: '4px',
+    transition: 'all 150ms ease',
+    cursor: 'pointer',
   },
-  resItemTop: {
+  reservationItemHover: {
+    background: '#f3f8f6',
+    boxShadow: '0 2px 4px rgba(34, 197, 94, 0.1)',
+  },
+  resTop: {
     display: 'flex',
     justifyContent: 'space-between',
     marginBottom: '8px',
+    alignItems: 'flex-start',
+  },
+  resInfo: {
+    flex: 1,
   },
   resName: {
-    fontSize: '14px',
+    fontSize: '12px',
     fontWeight: '600',
     color: '#111',
-    margin: 0,
+    margin: '0 0 2px 0',
   },
   resPhone: {
-    fontSize: '12px',
-    color: '#666',
-    margin: '4px 0 0 0',
+    fontSize: '11px',
+    color: '#777',
+    margin: 0,
   },
   resTime: {
-    fontSize: '16px',
+    fontSize: '14px',
     fontWeight: '700',
     color: '#22c55e',
+    minWidth: '50px',
+    textAlign: 'right',
   },
-  resItemBottom: {
+  resBottom: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
   resPeople: {
-    fontSize: '12px',
+    fontSize: '10px',
     color: '#666',
+    fontWeight: '500',
   },
-  resStatus: {
-    fontSize: '11px',
+  resBadge: {
+    fontSize: '10px',
     fontWeight: '600',
-    padding: '4px 8px',
-    borderRadius: '4px',
-  },
-  statusConfirmed: {
-    background: '#f0fdf4',
-    color: '#16a34a',
-  },
-  statusPending: {
-    background: '#fef3c7',
-    color: '#ca8a04',
-  },
-  statusCancelled: {
-    background: '#fef2f2',
-    color: '#dc2626',
-  },
-  statusDefault: {
-    background: '#f3f4f6',
-    color: '#6b7280',
+    padding: '3px 6px',
+    borderRadius: '3px',
   },
   chatMessages: {
     flex: 1,
     overflowY: 'auto',
-    marginBottom: '12px',
+    marginBottom: '10px',
     display: 'flex',
     flexDirection: 'column',
-    gap: '8px',
+    gap: '6px',
     maxHeight: '500px',
   },
-  chatBubble: {
-    padding: '12px 14px',
+  messageBubble: {
+    display: 'flex',
+    justifyContent: 'flex-start',
+    marginBottom: '2px',
+  },
+  bubbleContent: {
     background: '#f0fdf4',
-    borderRadius: '8px',
-    borderLeft: '4px solid #22c55e',
+    border: '1px solid #dbeafe',
+    borderLeft: '3px solid #22c55e',
+    borderRadius: '6px',
+    padding: '8px 10px',
+    maxWidth: '85%',
   },
-  chatSender: {
-    fontSize: '12px',
+  bubbleFrom: {
+    fontSize: '10px',
     fontWeight: '600',
-    color: '#111',
-    margin: '0 0 4px 0',
+    color: '#16a34a',
+    margin: '0 0 2px 0',
   },
-  chatMessage: {
-    fontSize: '13px',
-    color: '#333',
-    margin: '4px 0',
-    lineHeight: '1.4',
+  bubbleText: {
+    fontSize: '12px',
+    color: '#1a1a1a',
+    margin: '2px 0',
+    lineHeight: '1.3',
     wordBreak: 'break-word',
   },
-  chatTimeStamp: {
-    fontSize: '11px',
+  bubbleTime: {
+    fontSize: '10px',
     color: '#999',
-    margin: '4px 0 0 0',
+    margin: '3px 0 0 0',
   },
   chatInput: {
-    padding: '10px 12px',
-    border: '1px solid #e8e8e3',
-    borderRadius: '6px',
-    fontSize: '13px',
+    padding: '8px 10px',
+    border: '1px solid #e5e5e0',
+    borderRadius: '4px',
+    fontSize: '12px',
     fontFamily: 'inherit',
     cursor: 'not-allowed',
-    opacity: 0.6,
+    opacity: 0.5,
+    background: '#f9f9f7',
   },
   emptyState: {
     textAlign: 'center',
-    padding: '40px 20px',
-    color: '#999',
-    fontSize: '14px',
+    padding: '30px 15px',
+    color: '#aaa',
+    fontSize: '12px',
   },
   loading: {
     padding: '40px',
     textAlign: 'center',
-    fontSize: '16px',
-    color: '#777',
+    fontSize: '14px',
+    color: '#888',
   },
   errorContainer: {
     padding: '40px',
@@ -546,16 +568,16 @@ const styles = {
   },
   errorText: {
     color: '#dc2626',
-    fontSize: '14px',
+    fontSize: '13px',
     marginBottom: '16px',
   },
   retryBtn: {
-    padding: '10px 16px',
+    padding: '8px 14px',
     background: '#22c55e',
     color: '#fff',
     border: 'none',
-    borderRadius: '6px',
-    fontSize: '13px',
+    borderRadius: '4px',
+    fontSize: '12px',
     fontWeight: '600',
     cursor: 'pointer',
   },

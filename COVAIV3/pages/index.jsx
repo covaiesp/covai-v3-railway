@@ -2,6 +2,9 @@ import { useState } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '@/lib/supabase-client';
 
+const PIN_LENGTH = 4;
+const KEYS = ['1','2','3','4','5','6','7','8','9','','0','⌫'];
+
 export default function Landing() {
   const router = useRouter();
   const [showModal, setShowModal] = useState(false);
@@ -9,35 +12,46 @@ export default function Landing() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleSubmitPin = async (e) => {
-    e.preventDefault();
+  const handleKey = (key) => {
+    if (loading) return;
     setError('');
-    setLoading(true);
-
-    if (pin.length !== 6) {
-      setError('PIN debe ser 6 dígitos');
-      setLoading(false);
-      return;
+    if (key === '⌫') {
+      setPin((p) => p.slice(0, -1));
+    } else if (pin.length < PIN_LENGTH) {
+      const next = pin + key;
+      setPin(next);
+      if (next.length === PIN_LENGTH) submitPin(next);
     }
+  };
 
+  const submitPin = async (value) => {
+    setLoading(true);
     try {
       const { data, error: err } = await supabase
         .from('restaurants')
         .select('slug')
-        .eq('access_code', pin)
+        .eq('access_code', value)
         .single();
 
       if (err || !data) {
-        setError('PIN inválido');
+        setError('PIN incorrecto');
+        setPin('');
         setLoading(false);
         return;
       }
 
       router.push(`/${data.slug}`);
-    } catch (err) {
+    } catch {
       setError('Error. Intenta de nuevo.');
+      setPin('');
       setLoading(false);
     }
+  };
+
+  const closeModal = () => {
+    setShowModal(false);
+    setPin('');
+    setError('');
   };
 
   return (
@@ -50,58 +64,54 @@ export default function Landing() {
       <section style={styles.content}>
         <h1 style={styles.title}>Bienvenido</h1>
         <p style={styles.description}>
-          Accede a tu panel de reservas con tu código PIN
+          Accede a tu panel con tu código PIN
         </p>
-
-        <button
-          onClick={() => setShowModal(true)}
-          style={styles.btnPrimary}
-        >
+        <button onClick={() => setShowModal(true)} style={styles.btnPrimary}>
           Entrar al Panel
         </button>
       </section>
 
       {showModal && (
-        <div style={styles.modal}>
-          <div style={styles.modalContent}>
+        <div style={styles.overlay} onClick={closeModal}>
+          <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
             <h2 style={styles.modalTitle}>Ingresa tu PIN</h2>
-            
-            <form onSubmit={handleSubmitPin} style={styles.form}>
-              <input
-                type="text"
-                inputMode="numeric"
-                maxLength="6"
-                placeholder="000000"
-                value={pin}
-                onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
-                style={styles.input}
-                disabled={loading}
-              />
 
-              {error && <div style={styles.error}>{error}</div>}
-
-              <div style={styles.formButtons}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowModal(false);
-                    setPin('');
-                    setError('');
+            {/* Dots indicator */}
+            <div style={styles.dots}>
+              {Array.from({ length: PIN_LENGTH }).map((_, i) => (
+                <div
+                  key={i}
+                  style={{
+                    ...styles.dot,
+                    background: i < pin.length ? '#111' : '#e8e8e3',
                   }}
-                  style={styles.btnCancel}
-                  disabled={loading}
-                >
-                  Cancelar
-                </button>
+                />
+              ))}
+            </div>
+
+            {error && <div style={styles.error}>{error}</div>}
+
+            {/* Numeric pad */}
+            <div style={styles.pad}>
+              {KEYS.map((key, i) => (
                 <button
-                  type="submit"
-                  style={styles.btnSubmit}
-                  disabled={loading}
+                  key={i}
+                  onClick={() => key && handleKey(key)}
+                  disabled={loading || key === ''}
+                  style={{
+                    ...styles.padKey,
+                    ...(key === '' ? styles.padKeyEmpty : {}),
+                    ...(key === '⌫' ? styles.padKeyDelete : {}),
+                  }}
                 >
-                  {loading ? 'Validando...' : 'Entrar'}
+                  {loading && key === '0' ? '…' : key}
                 </button>
-              </div>
-            </form>
+              ))}
+            </div>
+
+            <button onClick={closeModal} style={styles.btnCancel}>
+              Cancelar
+            </button>
           </div>
         </div>
       )}
@@ -161,12 +171,9 @@ const styles = {
     fontWeight: '600',
     cursor: 'pointer',
   },
-  modal: {
+  overlay: {
     position: 'fixed',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+    inset: 0,
     background: 'rgba(0,0,0,0.5)',
     display: 'flex',
     alignItems: 'center',
@@ -175,64 +182,75 @@ const styles = {
   },
   modalContent: {
     background: '#fff',
-    borderRadius: '12px',
-    padding: '32px',
-    maxWidth: '400px',
+    borderRadius: '16px',
+    padding: '32px 24px 24px',
     width: '100%',
-  },
-  modalTitle: {
-    fontSize: '24px',
-    fontWeight: '700',
-    color: '#111',
-    margin: '0 0 24px 0',
-  },
-  form: {
+    maxWidth: '320px',
     display: 'flex',
     flexDirection: 'column',
+    alignItems: 'center',
+    gap: '24px',
+  },
+  modalTitle: {
+    fontSize: '20px',
+    fontWeight: '700',
+    color: '#111',
+    margin: 0,
+  },
+  dots: {
+    display: 'flex',
     gap: '16px',
   },
-  input: {
-    padding: '12px 16px',
-    border: '2px solid #e8e8e3',
-    borderRadius: '8px',
-    fontSize: '24px',
-    textAlign: 'center',
-    letterSpacing: '8px',
-    fontFamily: 'monospace',
-    fontWeight: '600',
+  dot: {
+    width: '16px',
+    height: '16px',
+    borderRadius: '50%',
+    transition: 'background 0.15s',
   },
   error: {
     background: '#fef2f2',
     color: '#991b1b',
-    padding: '12px',
+    padding: '10px 14px',
     borderRadius: '6px',
     fontSize: '13px',
     border: '1px solid #fecaca',
+    width: '100%',
+    textAlign: 'center',
+    boxSizing: 'border-box',
   },
-  formButtons: {
-    display: 'flex',
-    gap: '12px',
+  pad: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(3, 1fr)',
+    gap: '10px',
+    width: '100%',
+  },
+  padKey: {
+    padding: '18px 0',
+    fontSize: '22px',
+    fontWeight: '600',
+    color: '#111',
+    background: '#f5f5f0',
+    border: '1px solid #e8e8e3',
+    borderRadius: '10px',
+    cursor: 'pointer',
+    transition: 'background 0.1s',
+    fontFamily: 'Inter, sans-serif',
+  },
+  padKeyEmpty: {
+    background: 'transparent',
+    border: 'none',
+    cursor: 'default',
+  },
+  padKeyDelete: {
+    background: '#f0f0eb',
+    color: '#555',
   },
   btnCancel: {
-    flex: 1,
-    padding: '12px',
-    background: '#f5f5f0',
-    color: '#111',
-    border: '1px solid #e8e8e3',
-    borderRadius: '8px',
-    fontSize: '14px',
-    fontWeight: '600',
-    cursor: 'pointer',
-  },
-  btnSubmit: {
-    flex: 1,
-    padding: '12px',
-    background: '#22c55e',
-    color: '#fff',
+    background: 'none',
     border: 'none',
-    borderRadius: '8px',
+    color: '#888',
     fontSize: '14px',
-    fontWeight: '600',
     cursor: 'pointer',
+    padding: '4px 0',
   },
 };

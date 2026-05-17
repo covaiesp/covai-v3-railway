@@ -1,6 +1,32 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase-client';
 
+function toMinutes(t) {
+  if (!t) return 0;
+  const [h, m] = t.split(':').map(Number);
+  return (h || 0) * 60 + (m || 0);
+}
+
+function isOutsideServiceHours(createdAtStr, timezone, opening_hours) {
+  if (!opening_hours || !createdAtStr) return false;
+  const utc = new Date(createdAtStr.replace(' ', 'T') + 'Z');
+  const tz = timezone || 'Europe/Madrid';
+  const weekdayFmt = new Intl.DateTimeFormat('en-US', { timeZone: tz, weekday: 'short' });
+  const timeFmt    = new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: false });
+  const weekday = weekdayFmt.format(utc).toLowerCase().slice(0, 3);
+  const parts   = timeFmt.formatToParts(utc);
+  const hour    = parseInt(parts.find(p => p.type === 'hour').value,   10) % 24;
+  const minute  = parseInt(parts.find(p => p.type === 'minute').value, 10);
+  const mins    = hour * 60 + minute;
+  const day = opening_hours[weekday];
+  if (!day) return true;
+  if (day.dinner_open) {
+    return !(mins >= toMinutes(day.open) && mins < toMinutes(day.close)) &&
+           !(mins >= toMinutes(day.dinner_open) && mins < toMinutes(day.dinner_close));
+  }
+  return mins < toMinutes(day.open) || mins >= toMinutes(day.close);
+}
+
 function formatDateStatic(d) {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, '0');
@@ -13,7 +39,7 @@ export default function Dashboard({ restaurantId, restaurantSlug, restaurantName
   const [reservations, setReservations] = useState([]);
   const [conversations, setConversations] = useState([]);
   const [sevenDaysData, setSevenDaysData] = useState([]);
-  const [kpis, setKpis] = useState({ today: 0, week: 0, month: 0, lastReservationMinutes: null });
+  const [kpis, setKpis] = useState({ today: 0, week: 0, month: 0, fueraDeHorario: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [hoveredRes, setHoveredRes] = useState(null);
@@ -170,9 +196,25 @@ export default function Dashboard({ restaurantId, restaurantSlug, restaurantName
         .select('*', { count: 'exact', head: true })
         .eq('restaurant_slug', restaurantSlug)
         .gte('fecha', startOfMonth)
-        .lte('fecha', todayStr);
+        .lte('fecha', todayStr)
+        .neq('status', 'cancelada');
 
-      calculateKPIs(todayRes || [], monthDays, monthCount || 0);
+      // Fuera de horario — opening_hours del restaurante + created_at últimos 90 días
+      let fueraDeHorario = 0;
+      try {
+        const [{ data: restConfig }, { data: recent90 }] = await Promise.all([
+          supabase.from('restaurants').select('opening_hours, timezone').eq('slug', restaurantSlug).single(),
+          supabase.from('reservations').select('created_at').eq('restaurant_slug', restaurantSlug)
+            .gte('created_at', new Date(Date.now() - 90 * 86_400_000).toISOString()),
+        ]);
+        if (restConfig?.opening_hours && recent90) {
+          fueraDeHorario = recent90.filter(r =>
+            isOutsideServiceHours(r.created_at, restConfig.timezone, restConfig.opening_hours)
+          ).length;
+        }
+      } catch {}
+
+      calculateKPIs(todayRes || [], monthDays, monthCount || 0, fueraDeHorario);
     } catch {}
     finally {
       setLoading(false);
@@ -260,17 +302,10 @@ export default function Dashboard({ restaurantId, restaurantSlug, restaurantName
   };
 
   // ── Existing helpers — unchanged ──────────────────────────────────────────────
-  const calculateKPIs = (todayData, sevenDays, monthCount) => {
-    const todayCount = todayData.length;
+  const calculateKPIs = (todayData, sevenDays, monthCount, fueraDeHorario = 0) => {
+    const todayCount = todayData.filter(r => r.status !== 'cancelada').length;
     const weekCount = sevenDays.reduce((sum, d) => sum + d.count, 0);
-    let lastReservationMinutes = null;
-    if (todayData.length > 0) {
-      const lastCreated = todayData.map(r => r.created_at).filter(Boolean).sort().reverse()[0];
-      if (lastCreated) {
-        lastReservationMinutes = Math.floor((Date.now() - new Date(lastCreated).getTime()) / 60000);
-      }
-    }
-    setKpis({ today: todayCount, week: weekCount, month: monthCount, lastReservationMinutes });
+    setKpis({ today: todayCount, week: weekCount, month: monthCount, fueraDeHorario });
   };
 
   const formatDate = (d) => {
@@ -563,7 +598,7 @@ export default function Dashboard({ restaurantId, restaurantSlug, restaurantName
               <span style={s.statusLabel}>hoy</span>
             </div>
             <div style={s.kpiCell}>
-              <span style={{ ...s.statusNum, fontSize: '22px' }}>{reservations.reduce((s, r) => s + (r.personas || 0), 0)}</span>
+              <span style={{ ...s.statusNum, fontSize: '22px' }}>{reservations.filter(r => r.status !== 'cancelada').reduce((acc, r) => acc + (r.personas || 0), 0)}</span>
               <span style={s.statusLabel}>{selectedDate === todayStr ? 'personas hoy' : 'personas día'}</span>
             </div>
             <div style={s.kpiCell}>
@@ -571,10 +606,8 @@ export default function Dashboard({ restaurantId, restaurantSlug, restaurantName
               <span style={s.statusLabel}>este mes</span>
             </div>
             <div style={s.kpiCell}>
-              <span style={{ ...s.statusNum, fontSize: '14px', color: '#A09890' }}>
-                {formatLastActivity(kpis.lastReservationMinutes)}
-              </span>
-              <span style={s.statusLabel}>última</span>
+              <span style={{ ...s.statusNum, fontSize: '22px' }}>{kpis.fueraDeHorario}</span>
+              <span style={s.statusLabel}>fuera horario</span>
             </div>
           </div>
         ) : (
@@ -586,7 +619,7 @@ export default function Dashboard({ restaurantId, restaurantSlug, restaurantName
             </div>
             <div style={s.statusDivider} />
             <div style={s.statusItem}>
-              <span style={s.statusNum}>{reservations.reduce((s, r) => s + (r.personas || 0), 0)}</span>
+              <span style={s.statusNum}>{reservations.filter(r => r.status !== 'cancelada').reduce((acc, r) => acc + (r.personas || 0), 0)}</span>
               <span style={s.statusLabel}>{selectedDate === todayStr ? 'personas hoy' : 'personas este día'}</span>
             </div>
             <div style={s.statusDivider} />
@@ -596,10 +629,8 @@ export default function Dashboard({ restaurantId, restaurantSlug, restaurantName
             </div>
             <div style={s.statusDivider} />
             <div style={s.statusItem}>
-              <span style={{ ...s.statusNum, fontSize: '14px', color: '#A09890' }}>
-                {formatLastActivity(kpis.lastReservationMinutes)}
-              </span>
-              <span style={s.statusLabel}>última reserva</span>
+              <span style={s.statusNum}>{kpis.fueraDeHorario}</span>
+              <span style={s.statusLabel}>fuera de horario</span>
             </div>
           </>
         )}
@@ -1161,9 +1192,9 @@ const s = {
   },
   statusLabel: {
     fontSize: '11px',
-    color: '#B5AFA7',
-    fontWeight: '400',
-    letterSpacing: '0.1px',
+    color: '#7A7468',
+    fontWeight: '500',
+    letterSpacing: '0.2px',
   },
   statusDivider: {
     width: '1px',
@@ -1333,12 +1364,12 @@ const s = {
   chatSection: {
     background: '#F2F0EC',
     borderRadius: '20px',
-    border: '1px solid #E2DED7',
-    boxShadow: '0 1px 3px rgba(60,45,30,0.03)',
+    border: '1.5px solid #C8C0B4',
+    boxShadow: '0 2px 8px rgba(60,45,30,0.08), 0 1px 2px rgba(60,45,30,0.06)',
     display: 'flex',
     flexDirection: 'row',
     overflow: 'hidden',
-    height: '540px',
+    height: '480px',
   },
   chatLeft: {
     width: '210px',

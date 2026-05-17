@@ -1,6 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
 
-type State = "idle" | "waiting_people" | "waiting_date" | "waiting_time" | "waiting_name" | "waiting_confirmation" | "waiting_cancel" | "waiting_cancel_confirm" | "fallback_human";
+type State = "idle" | "waiting_people" | "waiting_date" | "waiting_time" | "waiting_name" | "waiting_confirmation" | "waiting_cancel_confirm" | "fallback_human";
 
 interface ConvState {
   state: State;
@@ -136,7 +136,26 @@ async function processMessage(
     }
     i = await classifyIntent(m, k);
     if (i === "new_reservation") { z = "waiting_people"; y = "¡Perfecto! 👌\n¿Para cuántas personas es la reserva?"; }
-    else if (i === "cancel") { z = "waiting_cancel"; y = "Voy a buscar tus reservas activas..."; }
+    else if (i === "cancel") {
+      // Busca inmediatamente — sin estado intermedio waiting_cancel
+      const { data: cancelRes } = await s.from("reservations")
+        .select("id,nombre,personas,fecha,hora")
+        .eq("restaurant_slug", slug)
+        .eq("telefono", p)
+        .eq("status", "confirmada")
+        .gte("fecha", new Date().toISOString().split("T")[0])
+        .limit(1);
+      if (!cancelRes || cancelRes.length === 0) {
+        z = "fallback_human";
+        y = "No encontré reservas activas.\nTe conecto con nuestro equipo 🙏";
+      } else {
+        const rv = cancelRes[0] as Record<string, unknown>;
+        x.reservation_id = rv.id;
+        z = "waiting_cancel_confirm";
+        const df = new Date(`${rv.fecha}T12:00:00`).toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" });
+        y = `Encontré:\n📅 ${df}\n🕐 ${String(rv.hora).slice(0, 5)}\n👥 ${rv.personas}\n\n¿Quieres cancelarla?`;
+      }
+    }
     else { z = "fallback_human"; y = "Un momento, te conecto con nuestro equipo 🙏"; }
     return { reply: y, next_state: z, draft: d, context: x, intent: i, insert_reservation: false, cancel_reservation_id: null };
   }
@@ -202,25 +221,6 @@ async function processMessage(
     return { reply: y, next_state: z, draft: (z === "idle" && !ir) ? {} : d, context: x, intent: z === "idle" ? null : i, insert_reservation: ir, cancel_reservation_id: null };
   }
 
-  if (z === "waiting_cancel") {
-    const { data: res } = await s.from("reservations")
-      .select("id,nombre,personas,fecha,hora")
-      .eq("restaurant_slug", slug)
-      .eq("telefono", p)
-      .eq("status", "confirmada")
-      .gte("fecha", new Date().toISOString().split("T")[0])
-      .limit(1);
-    if (!res || res.length === 0) { z = "idle"; y = "No encontré reservas activas 🔍"; }
-    else {
-      const rv = res[0] as Record<string, unknown>;
-      x.reservation_id = rv.id;
-      z = "waiting_cancel_confirm";
-      const df = new Date(`${rv.fecha}T12:00:00`).toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" });
-      y = `Encontré:\n📅 ${df}\n🕐 ${String(rv.hora).slice(0, 5)}\n👥 ${rv.personas}\n👤 ${rv.nombre}\n\n¿Cancelar? *sí* o *no*`;
-    }
-    return { reply: y, next_state: z, draft: d, context: x, intent: i, insert_reservation: false, cancel_reservation_id: null };
-  }
-
   if (z === "waiting_cancel_confirm") {
     if (isYes(m)) { cr = x.reservation_id as string; z = "idle"; y = "✅ Reserva cancelada.\n\nSi quieres reservar de nuevo, aquí estaré 😊"; }
     else if (isNo(m)) { z = "idle"; y = "Tu reserva sigue activa. 👍"; }
@@ -240,7 +240,20 @@ async function processMessage(
       return { reply: "¡Perfecto! 👌\n¿Para cuántas personas es la reserva?", next_state: "waiting_people" as State, draft: {}, context: {}, intent: "new_reservation", insert_reservation: false, cancel_reservation_id: null };
     }
     if (fi === "cancel") {
-      return { reply: "Voy a buscar tus reservas activas...", next_state: "waiting_cancel" as State, draft: {}, context: {}, intent: "cancel", insert_reservation: false, cancel_reservation_id: null };
+      const { data: cancelRes2 } = await s.from("reservations")
+        .select("id,nombre,personas,fecha,hora")
+        .eq("restaurant_slug", slug)
+        .eq("telefono", p)
+        .eq("status", "confirmada")
+        .gte("fecha", new Date().toISOString().split("T")[0])
+        .limit(1);
+      if (!cancelRes2 || cancelRes2.length === 0) {
+        return { reply: "No encontré reservas activas.\nTe conecto con nuestro equipo 🙏", next_state: "fallback_human" as State, draft: {}, context: {}, intent: "cancel", insert_reservation: false, cancel_reservation_id: null };
+      }
+      const rv2 = cancelRes2[0] as Record<string, unknown>;
+      const cx2 = { reservation_id: rv2.id };
+      const df2 = new Date(`${rv2.fecha}T12:00:00`).toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" });
+      return { reply: `Encontré:\n📅 ${df2}\n🕐 ${String(rv2.hora).slice(0, 5)}\n👥 ${rv2.personas}\n\n¿Quieres cancelarla?`, next_state: "waiting_cancel_confirm" as State, draft: {}, context: cx2, intent: "cancel", insert_reservation: false, cancel_reservation_id: null };
     }
     return { reply: "Un momento, te conecto con nuestro equipo 🙏", next_state: "fallback_human" as State, draft: d, context: x, intent: i, insert_reservation: false, cancel_reservation_id: null };
   }

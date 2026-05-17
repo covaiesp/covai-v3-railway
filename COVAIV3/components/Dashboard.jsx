@@ -1250,6 +1250,8 @@ const s = {
   reservasTable: {
     display: 'flex',
     flexDirection: 'column',
+    maxHeight: '364px',
+    overflowY: 'auto',
   },
   reservaRow: {
     display: 'flex',

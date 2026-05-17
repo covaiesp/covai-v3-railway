@@ -29,6 +29,11 @@ const LANG_MAP: Record<string, string> = {
   "4": "fr", "français": "fr", "frances": "fr", "french": "fr", "francés": "fr",
 };
 
+function parseName(t: string): string | null {
+  const m = t.match(/\b(?:a nombre de|nombre[:\s]+|me llamo|soy\s+|para\s+)([A-ZÁÉÍÓÚÜÑ][a-záéíóúüñ]+(?:\s+[A-ZÁÉÍÓÚÜÑ][a-záéíóúüñ]+)?)/);
+  return m ? m[1].trim() : null;
+}
+
 function detectLangFromContent(m: string): string | null {
   const l = m.toLowerCase().trim();
   if (/\b(book|table|cancel|reservation|people|want|please)\b/.test(l)) return "en";
@@ -204,16 +209,34 @@ async function processMessage(
     const dt = await normalizeDate(m, k);
     if (dt) {
       d.date = dt;
-      if (d.time) { z = "waiting_name"; y = `${ack()}\n\n¿A nombre de quién?`; }
-      else { z = "waiting_time"; y = `${ack()}\n\n¿A qué hora te gustaría?`; }
+      // Intentar extraer hora y nombre del mismo mensaje
+      if (!d.time) { const t = normalizeTime(m); if (t) d.time = t; }
+      if (!d.name) { const n = parseName(m); if (n) d.name = n; }
+      // Avanzar al primer campo que falte
+      if (!d.time) { z = "waiting_time"; y = `${ack()}\n\n¿A qué hora te gustaría?`; }
+      else if (!d.name) { z = "waiting_name"; y = `${ack()}\n\n¿A nombre de quién?`; }
+      else {
+        z = "waiting_confirmation";
+        const df = new Date(`${d.date}T12:00:00`).toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" });
+        y = `Perfecto 😊\n\nReserva para ${d.people} personas\n${df}\n${d.time}\n\n¿Confirmamos?`;
+      }
     } else { y = "No entendí esa fecha 📅\nPrueba: *mañana*, *viernes*, *15 de junio*"; }
     return { reply: y, next_state: z, draft: d, context: x, intent: i, insert_reservation: false, cancel_reservation_id: null };
   }
 
   if (z === "waiting_time") {
     const t = normalizeTime(m);
-    if (t) { d.time = t; z = "waiting_name"; y = `${ack()}\n\n¿A nombre de quién?`; }
-    else { y = `Esa hora no está disponible 🕐\n*Comida:* 13:00 · 14:00\n*Cena:* 20:00 · 21:00`; }
+    if (t) {
+      d.time = t;
+      // Intentar extraer nombre del mismo mensaje
+      if (!d.name) { const n = parseName(m); if (n) d.name = n; }
+      if (!d.name) { z = "waiting_name"; y = `${ack()}\n\n¿A nombre de quién?`; }
+      else {
+        z = "waiting_confirmation";
+        const df = new Date(`${d.date}T12:00:00`).toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" });
+        y = `Perfecto 😊\n\nReserva para ${d.people} personas\n${df}\n${d.time}\n\n¿Confirmamos?`;
+      }
+    } else { y = `Esa hora no está disponible 🕐\n*Comida:* 13:00 · 14:00\n*Cena:* 20:00 · 21:00`; }
     return { reply: y, next_state: z, draft: d, context: x, intent: i, insert_reservation: false, cancel_reservation_id: null };
   }
 

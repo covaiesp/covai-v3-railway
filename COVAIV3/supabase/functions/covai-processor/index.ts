@@ -116,16 +116,24 @@ async function processMessage(
   if (ep && !d.people) d.people = ep;
 
   if (z === "idle" || !z) {
-    if (!x.language) {
+    // ── Selección de idioma ────────────────────────────────────────────────
+    // Los números/palabras de idioma SOLO se interpretan cuando pending_action
+    // es exactamente "language_selection". Fuera de ese estado, "1","2","3","4"
+    // son tratados como input conversacional normal (personas, confirmaciones, etc.)
+    if (x.pending_action === "language_selection") {
       const langKey = m.trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
       const selectedLang = LANG_MAP[langKey];
       if (selectedLang) {
-        return { reply: "¡Hola! 😊 ¿En qué puedo ayudarte?\n• Hacer una reserva\n• Cancelar una reserva", next_state: "idle" as State, draft: d, context: { ...x, language: selectedLang }, intent: null, insert_reservation: false, cancel_reservation_id: null };
+        return { reply: "¡Hola! 😊 ¿En qué puedo ayudarte?\n• Hacer una reserva\n• Cancelar una reserva", next_state: "idle" as State, draft: d, context: { ...x, language: selectedLang, pending_action: null }, intent: null, insert_reservation: false, cancel_reservation_id: null };
       }
+      // No reconoció el idioma — reasked sin cambiar pending_action
+      return { reply: LANG_SELECT_MSG, next_state: "idle" as State, draft: d, context: x, intent: null, insert_reservation: false, cancel_reservation_id: null };
     }
+    // ──────────────────────────────────────────────────────────────────────
 
     if (GREETING_RE.test(m.trim()) && !x.language) {
-      return { reply: LANG_SELECT_MSG, next_state: "idle" as State, draft: d, context: x, intent: null, insert_reservation: false, cancel_reservation_id: null };
+      // Saludo sin idioma elegido → mostrar menú y activar pending_action
+      return { reply: LANG_SELECT_MSG, next_state: "idle" as State, draft: d, context: { ...x, pending_action: "language_selection" }, intent: null, insert_reservation: false, cancel_reservation_id: null };
     }
 
     if (GREETING_RE.test(m.trim())) {

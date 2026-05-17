@@ -1,6 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase-client';
 
+function formatDateStatic(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 export default function Dashboard({ restaurantId, restaurantSlug, restaurantName }) {
   const [reservations, setReservations] = useState([]);
   const [conversations, setConversations] = useState([]);
@@ -22,6 +29,7 @@ export default function Dashboard({ restaurantId, restaurantSlug, restaurantName
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState('');
   const [carouselStart, setCarouselStart] = useState(0);
+  const [selectedDate, setSelectedDate] = useState(() => formatDateStatic(new Date()));
   const chatMessagesRef = useRef(null);
   const lastThreadRef = useRef(null);
 
@@ -32,6 +40,18 @@ export default function Dashboard({ restaurantId, restaurantSlug, restaurantName
     const interval = setInterval(loadAllData, 30_000);
     return () => clearInterval(interval);
   }, [restaurantSlug, restaurantId]);
+
+  const handleSelectDate = async (dateStr) => {
+    setSelectedDate(dateStr);
+    // Fetch solo reservas de la fecha seleccionada — KPIs no cambian
+    const { data } = await supabase
+      .from('reservations')
+      .select('*')
+      .eq('restaurant_slug', restaurantSlug)
+      .eq('fecha', dateStr)
+      .order('hora', { ascending: true });
+    setReservations(data || []);
+  };
 
   useEffect(() => {
     const container = chatMessagesRef.current;
@@ -52,20 +72,30 @@ export default function Dashboard({ restaurantId, restaurantSlug, restaurantName
     }
   }, [conversations, selectedThread]);
 
-  const loadAllData = async () => {
+  const loadAllData = async (dateOverride) => {
     setError(null);
     try {
-      const todayStr = formatDate(new Date()); // siempre fecha actual del browser, no del mount
+      const todayStr = formatDate(new Date()); // para KPIs — siempre hoy
+      const fetchDate = dateOverride || selectedDate; // para la tabla de reservas
 
-      const { data: todayRes, error: resError } = await supabase
+      // Reservas para la fecha seleccionada (tabla principal)
+      const { data: selectedRes, error: resError } = await supabase
+        .from('reservations')
+        .select('*')
+        .eq('restaurant_slug', restaurantSlug)
+        .eq('fecha', fetchDate)
+        .order('hora', { ascending: true });
+
+      if (resError) throw new Error(resError.message);
+      setReservations(selectedRes || []);
+
+      // Reservas de HOY — solo para KPIs, no se muestran en tabla
+      const { data: todayRes } = await supabase
         .from('reservations')
         .select('*')
         .eq('restaurant_slug', restaurantSlug)
         .eq('fecha', todayStr)
         .order('hora', { ascending: true });
-
-      if (resError) throw new Error(resError.message);
-      setReservations(todayRes || []);
 
       const convFetch = await fetch(`/api/conversations?restaurant_id=${restaurantId}`);
       const convRes = convFetch.ok ? await convFetch.json() : [];
@@ -291,17 +321,24 @@ export default function Dashboard({ restaurantId, restaurantSlug, restaurantName
         >‹</button>
         <div style={s.carouselViewport}>
           <div style={{ ...s.carouselTrack, transform: `translateX(calc(-${carouselStart} * (100% / 7)))` }}>
-            {sevenDaysData.map((d) => (
-              <div key={d.date} style={{ ...s.carouselCard, ...(d.isToday && s.carouselCardToday) }}>
-                <p style={{ ...s.carouselDay, ...(d.isToday && s.carouselDayToday) }}>
-                  {d.isToday ? 'Hoy' : d.day}
-                </p>
-                <p style={{ ...s.carouselNum, ...(d.isToday && s.carouselNumToday) }}>{d.dayNum}</p>
-                <p style={{ ...s.carouselCount, ...(d.count > 0 && s.carouselCountActive) }}>
-                  {d.count > 0 ? d.count : '·'}
-                </p>
-              </div>
-            ))}
+            {sevenDaysData.map((d) => {
+              const isSelected = d.date === selectedDate;
+              return (
+                <div
+                  key={d.date}
+                  onClick={() => handleSelectDate(d.date)}
+                  style={{ ...s.carouselCard, ...(d.isToday && s.carouselCardToday), ...(isSelected && s.carouselCardSelected) }}
+                >
+                  <p style={{ ...s.carouselDay, ...(d.isToday && s.carouselDayToday), ...(isSelected && s.carouselDaySelected) }}>
+                    {d.isToday ? 'Hoy' : d.day}
+                  </p>
+                  <p style={{ ...s.carouselNum, ...(isSelected && s.carouselNumSelected) }}>{d.dayNum}</p>
+                  <p style={{ ...s.carouselCount, ...(d.count > 0 && s.carouselCountActive) }}>
+                    {d.count > 0 ? d.count : '·'}
+                  </p>
+                </div>
+              );
+            })}
           </div>
         </div>
         <button
@@ -342,7 +379,11 @@ export default function Dashboard({ restaurantId, restaurantSlug, restaurantName
         {/* RESERVAS */}
         <section style={s.reservasSection}>
           <div style={s.sectionHeader}>
-            <h2 style={s.sectionTitle}>Reservas de hoy</h2>
+            <h2 style={s.sectionTitle}>
+              {selectedDate === formatDate(new Date())
+                ? 'Reservas de hoy'
+                : `Reservas del ${new Date(selectedDate + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}`}
+            </h2>
             {reservations.length > 0 && (
               <span style={s.reservasCountBadge}>{reservations.length}</span>
             )}
@@ -646,12 +687,24 @@ const s = {
     borderRadius: '12px',
     textAlign: 'center',
     boxSizing: 'border-box',
-    cursor: 'default',
+    cursor: 'pointer',
+    transition: 'background 0.15s, border-color 0.15s',
   },
   carouselCardToday: {
     background: '#FAFAF8',
     border: '1px solid #C8E6CA',
     boxShadow: '0 0 0 3px rgba(74,222,128,0.10)',
+  },
+  carouselCardSelected: {
+    background: '#2A4A30',
+    border: '1px solid #1A3220',
+    boxShadow: '0 2px 8px rgba(42,74,48,0.20)',
+  },
+  carouselDaySelected: {
+    color: '#8FBF98',
+  },
+  carouselNumSelected: {
+    color: '#FFFFFF',
   },
   carouselDay: {
     fontSize: '9px',

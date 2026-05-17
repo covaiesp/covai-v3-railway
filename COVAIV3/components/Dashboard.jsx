@@ -96,6 +96,9 @@ export default function Dashboard({ restaurantId, restaurantSlug, restaurantName
       const todayStr = formatDate(new Date());
       const fetchDate = dateOverride || selectedDate;
 
+      // DEBUG — remove after diagnosis
+      console.log('[COVAI] loadAllData', { restaurantSlug, restaurantId, fetchDate, todayStr });
+
       // Reservas para la fecha seleccionada (tabla principal)
       const { data: selectedRes, error: resError } = await supabase
         .from('reservations')
@@ -103,6 +106,10 @@ export default function Dashboard({ restaurantId, restaurantSlug, restaurantName
         .eq('restaurant_slug', restaurantSlug)
         .eq('fecha', fetchDate)
         .order('hora', { ascending: true });
+
+      // DEBUG — remove after diagnosis
+      console.log('[COVAI] reservations query', { resError, count: selectedRes?.length, selectedRes });
+
       if (resError) throw new Error(resError.message);
       setReservations(selectedRes || []);
 
@@ -241,6 +248,8 @@ export default function Dashboard({ restaurantId, restaurantSlug, restaurantName
       status: 'confirmada',
       source: 'manual',
     });
+    // DEBUG — remove after diagnosis
+    console.log('[COVAI] insert result', { insertErr, selectedDate, restaurantSlug });
     setSavingRes(false);
     if (insertErr) { setSaveResError(insertErr.message); return; }
     setShowNewResModal(false);
@@ -280,13 +289,17 @@ export default function Dashboard({ restaurantId, restaurantSlug, restaurantName
   };
 
   const handleSelectDate = async (dateStr) => {
+    // DEBUG — remove after diagnosis
+    console.log('[COVAI] handleSelectDate', { dateStr, restaurantSlug });
     setSelectedDate(dateStr);
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('reservations')
       .select('*')
       .eq('restaurant_slug', restaurantSlug)
       .eq('fecha', dateStr)
       .order('hora', { ascending: true });
+    // DEBUG — remove after diagnosis
+    console.log('[COVAI] handleSelectDate result', { error, count: data?.length, data });
     setReservations(data || []);
   };
 

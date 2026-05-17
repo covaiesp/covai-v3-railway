@@ -477,7 +477,10 @@ export default function Dashboard({ restaurantId, restaurantSlug, restaurantName
               {isMobile && <span style={s.handoffAlertText}>{pendingHandoffs}</span>}
             </div>
           )}
-          <button onClick={loadAllData} style={s.btnRefresh} title="Actualizar">↻</button>
+          <div style={s.liveBadge} title="Actualización automática cada 30s">
+            <span style={s.liveDot} />
+            <span style={s.liveText}>live</span>
+          </div>
         </div>
       </header>
 
@@ -987,19 +990,29 @@ const s = {
     color: '#8A4030',
     fontWeight: '500',
   },
-  btnRefresh: {
-    background: 'transparent',
-    border: '1px solid #E2DED7',
-    borderRadius: '10px',
-    cursor: 'pointer',
-    width: '34px',
-    height: '34px',
+  liveBadge: {
     display: 'flex',
     alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: '18px',
-    color: '#B5AFA7',
-    lineHeight: 1,
+    gap: '5px',
+    padding: '0 10px',
+    height: '34px',
+    border: '1px solid #E2DED7',
+    borderRadius: '10px',
+    background: 'transparent',
+  },
+  liveDot: {
+    width: '6px',
+    height: '6px',
+    borderRadius: '50%',
+    background: '#4ade80',
+    flexShrink: 0,
+  },
+  liveText: {
+    fontSize: '11px',
+    fontWeight: '500',
+    color: '#A09890',
+    fontFamily: 'Inter, sans-serif',
+    letterSpacing: '0.04em',
   },
 
   // ── Carousel / Timeline ──────────────────────────────────────────────────────

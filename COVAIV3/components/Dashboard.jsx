@@ -563,8 +563,8 @@ export default function Dashboard({ restaurantId, restaurantSlug, restaurantName
               <span style={s.statusLabel}>hoy</span>
             </div>
             <div style={s.kpiCell}>
-              <span style={{ ...s.statusNum, fontSize: '22px' }}>{kpis.week}</span>
-              <span style={s.statusLabel}>próx. 60d</span>
+              <span style={{ ...s.statusNum, fontSize: '22px' }}>{reservations.reduce((s, r) => s + (r.personas || 0), 0)}</span>
+              <span style={s.statusLabel}>{selectedDate === todayStr ? 'personas hoy' : 'personas día'}</span>
             </div>
             <div style={s.kpiCell}>
               <span style={{ ...s.statusNum, fontSize: '22px' }}>{kpis.month}</span>
@@ -586,8 +586,8 @@ export default function Dashboard({ restaurantId, restaurantSlug, restaurantName
             </div>
             <div style={s.statusDivider} />
             <div style={s.statusItem}>
-              <span style={s.statusNum}>{kpis.week}</span>
-              <span style={s.statusLabel}>próximos 60 días</span>
+              <span style={s.statusNum}>{reservations.reduce((s, r) => s + (r.personas || 0), 0)}</span>
+              <span style={s.statusLabel}>{selectedDate === todayStr ? 'personas hoy' : 'personas este día'}</span>
             </div>
             <div style={s.statusDivider} />
             <div style={s.statusItem}>

@@ -91,26 +91,17 @@ export default function Dashboard({ restaurantId, restaurantSlug, restaurantName
 
   // ── loadAllData — carousel now 60 days, batch count query ────────────────────
   const loadAllData = async (dateOverride) => {
-    setError(null);
     try {
       const todayStr = formatDate(new Date());
       const fetchDate = dateOverride || selectedDate;
 
-      // DEBUG — remove after diagnosis
-      console.log('[COVAI] loadAllData', { restaurantSlug, restaurantId, fetchDate, todayStr });
-
-      // Reservas para la fecha seleccionada (tabla principal)
-      const { data: selectedRes, error: resError } = await supabase
+      // Reservas para la fecha seleccionada (tabla principal) — isolated so failures here don't hide UI
+      const { data: selectedRes } = await supabase
         .from('reservations')
         .select('*')
         .eq('restaurant_slug', restaurantSlug)
         .eq('fecha', fetchDate)
         .order('hora', { ascending: true });
-
-      // DEBUG — remove after diagnosis
-      console.log('[COVAI] reservations query', { resError, count: selectedRes?.length, selectedRes });
-
-      if (resError) throw new Error(resError.message);
       setReservations(selectedRes || []);
 
       // Reservas HOY — solo KPIs
@@ -121,10 +112,12 @@ export default function Dashboard({ restaurantId, restaurantSlug, restaurantName
         .eq('fecha', todayStr)
         .order('hora', { ascending: true });
 
-      // Conversations
-      const convFetch = await fetch(`/api/conversations?restaurant_id=${restaurantId}`);
-      const convRes = convFetch.ok ? await convFetch.json() : [];
-      setConversations(Array.isArray(convRes) ? convRes : []);
+      // Conversations — isolated: a parse error here must not kill the reservations render
+      try {
+        const convFetch = await fetch(`/api/conversations?restaurant_id=${restaurantId}`);
+        const convRes = convFetch.ok ? await convFetch.json() : [];
+        setConversations(Array.isArray(convRes) ? convRes : []);
+      } catch {}
 
       // Handoffs
       const { data: handoffRes } = await supabase
@@ -180,9 +173,8 @@ export default function Dashboard({ restaurantId, restaurantSlug, restaurantName
         .lte('fecha', todayStr);
 
       calculateKPIs(todayRes || [], monthDays, monthCount || 0);
-    } catch (err) {
-      setError('Error al cargar datos');
-    } finally {
+    } catch {}
+    finally {
       setLoading(false);
     }
   };

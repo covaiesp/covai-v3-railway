@@ -62,13 +62,10 @@ export default function Dashboard({ restaurantId, restaurantSlug, restaurantName
       if (resError) throw new Error(resError.message);
       setReservations(todayRes || []);
 
-      const { data: convRes } = await supabase
-        .from('conversations')
-        .select('*')
-        .eq('restaurant_id', restaurantId)
-        .order('created_at', { ascending: false })
-        .limit(200);
-      setConversations(convRes || []);
+      const convFetch = await fetch(`/api/conversations?restaurant_id=${restaurantId}`);
+      const convRes = convFetch.ok ? await convFetch.json() : [];
+      if (!convFetch.ok) console.error('conversations error:', await convFetch.text().catch(() => ''));
+      setConversations(Array.isArray(convRes) ? convRes : []);
 
       const { data: handoffRes } = await supabase
         .from('conversation_states')

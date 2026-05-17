@@ -29,6 +29,15 @@ const LANG_MAP: Record<string, string> = {
   "4": "fr", "français": "fr", "frances": "fr", "french": "fr", "francés": "fr",
 };
 
+function detectLangFromContent(m: string): string | null {
+  const l = m.toLowerCase().trim();
+  if (/\b(book|table|cancel|reservation|people|want|please)\b/.test(l)) return "en";
+  if (/\b(tavolo|prenotare|prenotazione|persone|annulla|vorrei)\b/.test(l)) return "it";
+  if (/\b(réserver|réservation|annuler|personnes|je veux)\b/.test(l)) return "fr";
+  if (/\b(reservar|cancelar|reserva|mesa|personas|quiero|necesito)\b/.test(l)) return "es";
+  return null;
+}
+
 function isYes(t: string): boolean {
   const l = t.toLowerCase().trim();
   return YES.some(w => l === w || l.includes(w));
@@ -128,8 +137,17 @@ async function processMessage(
       if (selectedLang) {
         return { reply: "¡Hola! 😊 ¿En qué puedo ayudarte?\n• Hacer una reserva\n• Cancelar una reserva", next_state: "idle" as State, draft: d, context: { ...x, language: selectedLang, pending_action: null }, intent: null, insert_reservation: false, cancel_reservation_id: null };
       }
-      // No reconoció el idioma — reasked sin cambiar pending_action
-      return { reply: LANG_SELECT_MSG, next_state: "idle" as State, draft: d, context: x, intent: null, insert_reservation: false, cancel_reservation_id: null };
+      // Intenta inferir idioma desde el contenido del mensaje
+      const inferredLang = detectLangFromContent(m);
+      if (inferredLang) {
+        // Señal lingüística detectada: asignar idioma y dejar fluir como idle normal
+        x.language = inferredLang;
+        x.pending_action = null;
+        // fall through to rest of idle handling below
+      } else {
+        // Sin señal clara — reasked sin cambiar pending_action
+        return { reply: LANG_SELECT_MSG, next_state: "idle" as State, draft: d, context: x, intent: null, insert_reservation: false, cancel_reservation_id: null };
+      }
     }
     // ──────────────────────────────────────────────────────────────────────
 

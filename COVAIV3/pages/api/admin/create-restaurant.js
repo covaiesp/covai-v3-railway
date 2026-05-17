@@ -25,7 +25,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { name, phone_number, twilio_account_sid, twilio_auth_token, twilio_whatsapp_from } = req.body;
+  const { name, phone_number, opening_hours, twilio_account_sid, twilio_auth_token, twilio_whatsapp_from } = req.body;
 
   if (!name || typeof name !== 'string' || !name.trim()) {
     return res.status(400).json({ error: 'name is required' });
@@ -74,6 +74,7 @@ export default async function handler(req, res) {
       phone_number: phone_number.trim(),
       slug,
       access_code: pin,
+      ...(opening_hours ? { opening_hours } : {}),
       ...(twilio_account_sid ? { twilio_account_sid: twilio_account_sid.trim() } : {}),
       ...(twilio_auth_token ? { twilio_auth_token: twilio_auth_token.trim() } : {}),
       ...(twilio_whatsapp_from ? { twilio_whatsapp_from: twilio_whatsapp_from.trim() } : {}),

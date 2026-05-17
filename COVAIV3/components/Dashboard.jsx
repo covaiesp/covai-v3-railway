@@ -307,7 +307,9 @@ export default function Dashboard({ restaurantId, restaurantSlug, restaurantName
 
   const formatMsgTime = (iso) => {
     if (!iso) return '';
-    const d = new Date(iso), diff = Date.now() - d;
+    const d = new Date(iso.replace(' ', 'T'));
+    if (isNaN(d.getTime())) return '';
+    const diff = Date.now() - d;
     if (diff < 60000) return 'ahora';
     if (diff < 3600000) return `${Math.floor(diff / 60000)}m`;
     if (diff < 86400000) return d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });

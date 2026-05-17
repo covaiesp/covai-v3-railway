@@ -11,8 +11,68 @@ interface ConvState {
 }
 
 const VALID_TIMES = ["13:00","13:30","14:00","14:30","15:00","15:30","20:00","20:30","21:00","21:30","22:00","22:30"];
-const ACK = ["Perfecto 👍", "Genial 😊", "Excelente 👌", "Gracias 👍"];
-function ack(): string { return ACK[Math.floor(Math.random() * ACK.length)]; }
+
+// ── Multilingual strings — happy path only ───────────────────────────────────
+const MSG: Record<string, Record<string, string | string[]>> = {
+  es: {
+    menu_main:               "¡Hola! 😊 ¿En qué puedo ayudarte?\n• Hacer una reserva\n• Cancelar una reserva",
+    asking_people:           "¡Perfecto! 👌\n¿Para cuántas personas es la reserva?",
+    asking_date:             "¿Para cuándo sería la reserva?",
+    asking_time:             "¿A qué hora te gustaría?",
+    asking_name:             "¿A nombre de quién?",
+    confirmation_ready:      "Perfecto 😊\n\nReserva para {people} personas\n{date}\n{time}\n\n¿Confirmamos?",
+    success:                 "✅ *¡Reserva confirmada!*\n👤 {name}\n📅 {date}\n🕐 {time}\n👥 {people}\n\nTe esperamos 😊",
+    thanks:                  "¡Con mucho gusto! 😊 Si necesitas algo más, aquí estaré.",
+    ack:                     ["Perfecto 👍", "Genial 😊", "Excelente 👌", "Gracias 👍"],
+  },
+  en: {
+    menu_main:               "Hello! 😊 How can I help you?\n• Make a reservation\n• Cancel a reservation",
+    asking_people:           "Perfect! 👌\nHow many people will be dining?",
+    asking_date:             "What date would you like to book?",
+    asking_time:             "What time would you prefer?",
+    asking_name:             "Under what name should I make the reservation?",
+    confirmation_ready:      "Great 😊\n\nReservation for {people} people\n{date}\n{time}\n\nShall we confirm?",
+    success:                 "✅ *Reservation confirmed!*\n👤 {name}\n📅 {date}\n🕐 {time}\n👥 {people}\n\nWe'll see you then 😊",
+    thanks:                  "My pleasure! 😊 If you need anything else, I'm here.",
+    ack:                     ["Perfect 👍", "Great 😊", "Excellent 👌", "Thanks 👍"],
+  },
+  it: {
+    menu_main:               "Ciao! 😊 Come posso aiutarti?\n• Fare una prenotazione\n• Cancellare una prenotazione",
+    asking_people:           "Perfetto! 👌\nPer quante persone è la prenotazione?",
+    asking_date:             "Per quando vorreste prenotare?",
+    asking_time:             "A che ora preferite?",
+    asking_name:             "A nome di chi?",
+    confirmation_ready:      "Perfetto 😊\n\nPrenotazione per {people} persone\n{date}\n{time}\n\nConfermiamo?",
+    success:                 "✅ *Prenotazione confermata!*\n👤 {name}\n📅 {date}\n🕐 {time}\n👥 {people}\n\nCi vediamo presto 😊",
+    thanks:                  "Prego! 😊 Se hai bisogno di altro, sono qui.",
+    ack:                     ["Perfetto 👍", "Ottimo 😊", "Eccellente 👌", "Grazie 👍"],
+  },
+  fr: {
+    menu_main:               "Bonjour ! 😊 Comment puis-je vous aider ?\n• Faire une réservation\n• Annuler une réservation",
+    asking_people:           "Parfait ! 👌\nPour combien de personnes ?",
+    asking_date:             "Pour quelle date souhaitez-vous réserver ?",
+    asking_time:             "À quelle heure préférez-vous ?",
+    asking_name:             "Au nom de qui ?",
+    confirmation_ready:      "Parfait 😊\n\nRéservation pour {people} personnes\n{date}\n{time}\n\nOn confirme ?",
+    success:                 "✅ *Réservation confirmée !*\n👤 {name}\n📅 {date}\n🕐 {time}\n👥 {people}\n\nÀ bientôt 😊",
+    thanks:                  "Avec plaisir ! 😊 Si vous avez besoin d'autre chose, je suis là.",
+    ack:                     ["Parfait 👍", "Super 😊", "Excellent 👌", "Merci 👍"],
+  },
+};
+
+function tr(lang: string, key: string, vars?: Record<string, string | number>): string {
+  const l = MSG[lang] ?? MSG["es"];
+  let val = (l[key] ?? MSG["es"][key] ?? key) as string | string[];
+  if (Array.isArray(val)) val = val[Math.floor(Math.random() * val.length)];
+  if (vars) {
+    for (const [k, v] of Object.entries(vars)) {
+      val = (val as string).replace(`{${k}}`, String(v));
+    }
+  }
+  return val as string;
+}
+
+function ack(lang: string): string { return tr(lang, "ack"); }
 const YES = ["si","sí","s","ok","vale","confirmo","yes","claro","correcto","confirmamos","dale","perfecto","genial","obvio","confirmar","confirmá"];
 const NO = ["no","n","cancelar","cancel","mejor no","olvidalo","olvídalo","ya no"];
 
@@ -123,6 +183,7 @@ async function processMessage(
 ) {
   const d = { ...c.draft };
   const x = { ...c.context };
+  let lang = (x.language as string) || "es";
   let y = "", z: State = c.state, i = c.intent, ir = false;
   let cr: string | null = null;
 
@@ -140,7 +201,7 @@ async function processMessage(
       const langKey = m.trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
       const selectedLang = LANG_MAP[langKey];
       if (selectedLang) {
-        return { reply: "¡Hola! 😊 ¿En qué puedo ayudarte?\n• Hacer una reserva\n• Cancelar una reserva", next_state: "idle" as State, draft: d, context: { ...x, language: selectedLang, pending_action: null }, intent: null, insert_reservation: false, cancel_reservation_id: null };
+        return { reply: tr(selectedLang, "menu_main"), next_state: "idle" as State, draft: d, context: { ...x, language: selectedLang, pending_action: null }, intent: null, insert_reservation: false, cancel_reservation_id: null };
       }
       // Intenta inferir idioma desde el contenido del mensaje
       const inferredLang = detectLangFromContent(m);
@@ -148,6 +209,7 @@ async function processMessage(
         // Señal lingüística detectada: asignar idioma y dejar fluir como idle normal
         x.language = inferredLang;
         x.pending_action = null;
+        lang = inferredLang;
         // fall through to rest of idle handling below
       } else {
         // Sin señal clara — reasked sin cambiar pending_action
@@ -162,13 +224,13 @@ async function processMessage(
     }
 
     if (GREETING_RE.test(m.trim())) {
-      return { reply: "¡Hola! 😊 ¿En qué puedo ayudarte?\n• Hacer una reserva\n• Cancelar una reserva", next_state: "idle" as State, draft: d, context: x, intent: null, insert_reservation: false, cancel_reservation_id: null };
+      return { reply: tr(lang, "menu_main"), next_state: "idle" as State, draft: d, context: x, intent: null, insert_reservation: false, cancel_reservation_id: null };
     }
     if (THANKS_RE.test(m.trim())) {
-      return { reply: "¡Con mucho gusto! 😊 Si necesitas algo más, aquí estaré.", next_state: "idle" as State, draft: d, context: x, intent: null, insert_reservation: false, cancel_reservation_id: null };
+      return { reply: tr(lang, "thanks"), next_state: "idle" as State, draft: d, context: x, intent: null, insert_reservation: false, cancel_reservation_id: null };
     }
     i = await classifyIntent(m, k);
-    if (i === "new_reservation") { z = "waiting_people"; y = "¡Perfecto! 👌\n¿Para cuántas personas es la reserva?"; }
+    if (i === "new_reservation") { z = "waiting_people"; y = tr(lang, "asking_people"); }
     else if (i === "cancel") {
       // Busca inmediatamente — sin estado intermedio waiting_cancel
       const { data: cancelRes } = await s.from("reservations")
@@ -200,7 +262,7 @@ async function processMessage(
       // NO llamar normalizeDate aquí — el flujo es siempre: personas → fecha → hora → nombre
       // normalizeDate en el mensaje de personas causa que GPT asuma fecha desde un número ambiguo
       z = "waiting_date";
-      y = `${ack()}, ${n} personas\n\n¿Para cuándo sería la reserva?`;
+      y = `${ack(lang)}, ${n}\n\n${tr(lang, "asking_date")}`;
     } else { y = "No entendí el número 🤔\nEscribe solo el número: *2*"; }
     return { reply: y, next_state: z, draft: d, context: x, intent: i, insert_reservation: false, cancel_reservation_id: null };
   }
@@ -213,12 +275,12 @@ async function processMessage(
       if (!d.time) { const t = normalizeTime(m); if (t) d.time = t; }
       if (!d.name) { const n = parseName(m); if (n) d.name = n; }
       // Avanzar al primer campo que falte
-      if (!d.time) { z = "waiting_time"; y = `${ack()}\n\n¿A qué hora te gustaría?`; }
-      else if (!d.name) { z = "waiting_name"; y = `${ack()}\n\n¿A nombre de quién?`; }
+      if (!d.time) { z = "waiting_time"; y = `${ack(lang)}\n\n${tr(lang, "asking_time")}`; }
+      else if (!d.name) { z = "waiting_name"; y = `${ack(lang)}\n\n${tr(lang, "asking_name")}`; }
       else {
         z = "waiting_confirmation";
         const df = new Date(`${d.date}T12:00:00`).toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" });
-        y = `Perfecto 😊\n\nReserva para ${d.people} personas\n${df}\n${d.time}\n\n¿Confirmamos?`;
+        y = tr(lang, "confirmation_ready", { people: d.people as number, date: df, time: d.time as string });
       }
     } else { y = "No entendí esa fecha 📅\nPrueba: *mañana*, *viernes*, *15 de junio*"; }
     return { reply: y, next_state: z, draft: d, context: x, intent: i, insert_reservation: false, cancel_reservation_id: null };
@@ -230,11 +292,11 @@ async function processMessage(
       d.time = t;
       // Intentar extraer nombre del mismo mensaje
       if (!d.name) { const n = parseName(m); if (n) d.name = n; }
-      if (!d.name) { z = "waiting_name"; y = `${ack()}\n\n¿A nombre de quién?`; }
+      if (!d.name) { z = "waiting_name"; y = `${ack(lang)}\n\n${tr(lang, "asking_name")}`; }
       else {
         z = "waiting_confirmation";
         const df = new Date(`${d.date}T12:00:00`).toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" });
-        y = `Perfecto 😊\n\nReserva para ${d.people} personas\n${df}\n${d.time}\n\n¿Confirmamos?`;
+        y = tr(lang, "confirmation_ready", { people: d.people as number, date: df, time: d.time as string });
       }
     } else { y = `Esa hora no está disponible 🕐\n*Comida:* 13:00 · 14:00\n*Cena:* 20:00 · 21:00`; }
     return { reply: y, next_state: z, draft: d, context: x, intent: i, insert_reservation: false, cancel_reservation_id: null };
@@ -247,7 +309,7 @@ async function processMessage(
     z = "waiting_confirmation";
     const dft = d as Record<string, unknown>;
     const df = new Date(`${dft.date}T12:00:00`).toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" });
-    y = `Perfecto 😊\n\nReserva para ${dft.people} personas\n${df}\n${dft.time}\n\n¿Confirmamos?`;
+    y = tr(lang, "confirmation_ready", { people: dft.people as number, date: df, time: dft.time as string });
     return { reply: y, next_state: z, draft: d, context: x, intent: i, insert_reservation: false, cancel_reservation_id: null };
   }
 
@@ -265,7 +327,7 @@ async function processMessage(
         ir = true;
         z = "idle";
         const df = new Date(`${dft.date}T12:00:00`).toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" });
-        y = `✅ *¡Reserva confirmada!*\n👤 ${dft.name}\n📅 ${df}\n🕐 ${dft.time}\n👥 ${dft.people}\n\nTe esperamos 😊`;
+        y = tr(lang, "success", { name: dft.name as string, date: df, time: dft.time as string, people: dft.people as number });
       }
     } else if (isNo(m)) { z = "idle"; y = "Reserva descartada. 👋"; }
     else { y = "Responde *sí* o *no*"; }

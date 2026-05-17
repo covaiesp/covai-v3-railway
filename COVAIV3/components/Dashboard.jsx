@@ -8,7 +8,8 @@ export default function Dashboard({ restaurantId, restaurantSlug, restaurantName
   const [kpis, setKpis] = useState({ today: 0, week: 0, month: 0, lastReservationMinutes: null });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [today] = useState(new Date());
+  // No guardamos 'today' en estado — se calcula en cada loadAllData para evitar
+  // que el dashboard quede con fecha obsoleta si se deja abierto pasada la medianoche
   const [hoveredRes, setHoveredRes] = useState(null);
   const [selectedThread, setSelectedThread] = useState(null);
   const [readThreads, setReadThreads] = useState(new Set());
@@ -26,6 +27,10 @@ export default function Dashboard({ restaurantId, restaurantSlug, restaurantName
 
   useEffect(() => {
     loadAllData();
+    // Auto-refresh cada 30s para que las reservas confirmadas vía WhatsApp
+    // aparezcan sin que el usuario tenga que recargar manualmente
+    const interval = setInterval(loadAllData, 30_000);
+    return () => clearInterval(interval);
   }, [restaurantSlug, restaurantId]);
 
   useEffect(() => {
@@ -50,7 +55,7 @@ export default function Dashboard({ restaurantId, restaurantSlug, restaurantName
   const loadAllData = async () => {
     setError(null);
     try {
-      const todayStr = formatDate(today);
+      const todayStr = formatDate(new Date()); // siempre fecha actual del browser, no del mount
 
       const { data: todayRes, error: resError } = await supabase
         .from('reservations')
@@ -74,11 +79,12 @@ export default function Dashboard({ restaurantId, restaurantSlug, restaurantName
         .eq('state', 'fallback_human');
       setHandoffPhones(new Set((handoffRes || []).map(r => r.phone_number)));
 
-      const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
-      const daysRemaining = lastDayOfMonth - today.getDate();
+      const now = new Date();
+      const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+      const daysRemaining = lastDayOfMonth - now.getDate();
       const monthDays = [];
       for (let i = 0; i <= daysRemaining; i++) {
-        const d = new Date(today);
+        const d = new Date(now);
         d.setDate(d.getDate() + i);
         const dateStr = formatDate(d);
         const { count } = await supabase
@@ -96,7 +102,7 @@ export default function Dashboard({ restaurantId, restaurantSlug, restaurantName
       }
       setSevenDaysData(monthDays);
 
-      const startOfMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-01`;
+      const startOfMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
       const { count: monthCount } = await supabase
         .from('reservations')
         .select('*', { count: 'exact', head: true })

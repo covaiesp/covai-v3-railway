@@ -11,6 +11,8 @@ interface ConvState {
 }
 
 const VALID_TIMES = ["13:00","13:30","14:00","14:30","15:00","15:30","20:00","20:30","21:00","21:30","22:00","22:30"];
+const ACK = ["Perfecto 👍", "Genial 😊", "Excelente 👌", "Gracias 👍"];
+function ack(): string { return ACK[Math.floor(Math.random() * ACK.length)]; }
 const YES = ["si","sí","s","ok","vale","confirmo","yes","claro","correcto","confirmamos","dale","perfecto","genial","obvio","confirmar","confirmá"];
 const NO = ["no","n","cancelar","cancel","mejor no","olvidalo","olvídalo","ya no"];
 
@@ -175,7 +177,7 @@ async function processMessage(
       // NO llamar normalizeDate aquí — el flujo es siempre: personas → fecha → hora → nombre
       // normalizeDate en el mensaje de personas causa que GPT asuma fecha desde un número ambiguo
       z = "waiting_date";
-      y = `Perfecto, ${n} personas 👍\n\n¿Para cuándo sería la reserva?`;
+      y = `${ack()}, ${n} personas\n\n¿Para cuándo sería la reserva?`;
     } else { y = "No entendí el número 🤔\nEscribe solo el número: *2*"; }
     return { reply: y, next_state: z, draft: d, context: x, intent: i, insert_reservation: false, cancel_reservation_id: null };
   }
@@ -184,15 +186,15 @@ async function processMessage(
     const dt = await normalizeDate(m, k);
     if (dt) {
       d.date = dt;
-      if (d.time) { z = "waiting_name"; y = `Perfecto 👍\n\n¿A nombre de quién?`; }
-      else { z = "waiting_time"; y = `Perfecto 👍\n\n¿A qué hora te gustaría?`; }
+      if (d.time) { z = "waiting_name"; y = `${ack()}\n\n¿A nombre de quién?`; }
+      else { z = "waiting_time"; y = `${ack()}\n\n¿A qué hora te gustaría?`; }
     } else { y = "No entendí esa fecha 📅\nPrueba: *mañana*, *viernes*, *15 de junio*"; }
     return { reply: y, next_state: z, draft: d, context: x, intent: i, insert_reservation: false, cancel_reservation_id: null };
   }
 
   if (z === "waiting_time") {
     const t = normalizeTime(m);
-    if (t) { d.time = t; z = "waiting_name"; y = `Perfecto 👍\n\n¿A nombre de quién?`; }
+    if (t) { d.time = t; z = "waiting_name"; y = `${ack()}\n\n¿A nombre de quién?`; }
     else { y = `Esa hora no está disponible 🕐\n*Comida:* 13:00 · 14:00\n*Cena:* 20:00 · 21:00`; }
     return { reply: y, next_state: z, draft: d, context: x, intent: i, insert_reservation: false, cancel_reservation_id: null };
   }

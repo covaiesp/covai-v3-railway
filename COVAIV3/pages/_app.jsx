@@ -17,6 +17,9 @@ export default function App({ Component, pageProps }) {
         <meta name="theme-color" content="#EFEDE8" />
         <meta name="msapplication-TileColor" content="#1E1C1A" />
 
+        {/* ── Facebook domain verification ─────────────────────── */}
+        <meta name="facebook-domain-verification" content="rpdqltjgyncbji48ad9w6w1m3yxkyo" />
+
         {/* ── No indexing — internal tool ──────────────────────── */}
         <meta name="robots" content="noindex, nofollow" />
 
